@@ -37,11 +37,44 @@ export type OutroScene = SceneBase & {
   signoff: string;
 };
 
+export type CinematicTitleScene = SceneBase & {
+  type: "cinematic-title";
+  videoUrl: string;
+  title: string;
+  subtitle: string;
+};
+
+export type SplitVideoScene = SceneBase & {
+  type: "split-video";
+  videoUrl: string;
+  heading: string;
+  body: string;
+  videoSide: "left" | "right";
+};
+
+export type LowerThirdScene = SceneBase & {
+  type: "lower-third";
+  videoUrl: string;
+  name: string;
+  role: string;
+};
+
+export type QuoteVideoScene = SceneBase & {
+  type: "quote-video";
+  videoUrl: string;
+  quote: string;
+  attribution: string;
+};
+
 export type Scene =
   | TitleScene
   | TalkingPointScene
   | ImageCaptionScene
-  | OutroScene;
+  | OutroScene
+  | CinematicTitleScene
+  | SplitVideoScene
+  | LowerThirdScene
+  | QuoteVideoScene;
 
 export type SceneType = Scene["type"];
 
@@ -103,6 +136,47 @@ export function makeScene(type: SceneType): Scene {
         message: "Thanks for watching",
         signoff: "Tilburg University",
       };
+    case "cinematic-title":
+      return {
+        id,
+        type: "cinematic-title",
+        durationFrames: 150,
+        accent: "brons",
+        videoUrl: "",
+        title: "Big idea, in one line",
+        subtitle: "Tilburg University",
+      };
+    case "split-video":
+      return {
+        id,
+        type: "split-video",
+        durationFrames: 180,
+        accent: "marine",
+        videoUrl: "",
+        heading: "What you'll learn",
+        body: "A short paragraph that explains the concept clearly and concisely.",
+        videoSide: "left",
+      };
+    case "lower-third":
+      return {
+        id,
+        type: "lower-third",
+        durationFrames: 150,
+        accent: "brons",
+        videoUrl: "",
+        name: "Dr. Jane Doe",
+        role: "Associate Professor, Tilburg School of Economics and Management",
+      };
+    case "quote-video":
+      return {
+        id,
+        type: "quote-video",
+        durationFrames: 180,
+        accent: "ocean",
+        videoUrl: "",
+        quote: "Education is the most powerful weapon which you can use to change the world.",
+        attribution: "Nelson Mandela",
+      };
   }
 }
 
@@ -111,4 +185,8 @@ export const SCENE_TEMPLATE_LABEL: Record<SceneType, string> = {
   "talking-point": "Talking point",
   "image-caption": "Image + caption",
   outro: "Outro",
+  "cinematic-title": "Cinematic title",
+  "split-video": "Split video + text",
+  "lower-third": "Lower-third over video",
+  "quote-video": "Quote over video",
 };
