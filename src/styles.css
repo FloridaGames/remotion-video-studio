@@ -63,38 +63,46 @@
 
 :root {
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.129 0.042 264.695);
+  /* Tilburg University brand: Marine primary + Brons accent */
+  --background: oklch(0.99 0.003 240);
+  --foreground: oklch(0.22 0.06 255);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.129 0.042 264.695);
+  --card-foreground: oklch(0.22 0.06 255);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.129 0.042 264.695);
-  --primary: oklch(0.208 0.042 265.755);
-  --primary-foreground: oklch(0.984 0.003 247.858);
-  --secondary: oklch(0.968 0.007 247.896);
-  --secondary-foreground: oklch(0.208 0.042 265.755);
-  --muted: oklch(0.968 0.007 247.896);
-  --muted-foreground: oklch(0.554 0.046 257.417);
-  --accent: oklch(0.968 0.007 247.896);
-  --accent-foreground: oklch(0.208 0.042 265.755);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.984 0.003 247.858);
-  --border: oklch(0.929 0.013 255.508);
-  --input: oklch(0.929 0.013 255.508);
-  --ring: oklch(0.704 0.04 256.788);
+  --popover-foreground: oklch(0.22 0.06 255);
+  /* Marine #003366 */
+  --primary: oklch(0.32 0.10 255);
+  --primary-foreground: oklch(0.99 0.003 240);
+  --secondary: oklch(0.96 0.01 240);
+  --secondary-foreground: oklch(0.32 0.10 255);
+  --muted: oklch(0.96 0.01 240);
+  --muted-foreground: oklch(0.50 0.03 250);
+  /* Brons #cc9933 */
+  --accent: oklch(0.72 0.13 80);
+  --accent-foreground: oklch(0.22 0.06 255);
+  --destructive: oklch(0.55 0.22 27);
+  --destructive-foreground: oklch(0.99 0.003 240);
+  --border: oklch(0.90 0.02 240);
+  --input: oklch(0.94 0.015 240);
+  --ring: oklch(0.32 0.10 255);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.984 0.003 247.858);
-  --sidebar-foreground: oklch(0.129 0.042 264.695);
-  --sidebar-primary: oklch(0.208 0.042 265.755);
-  --sidebar-primary-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-accent: oklch(0.968 0.007 247.896);
-  --sidebar-accent-foreground: oklch(0.208 0.042 265.755);
-  --sidebar-border: oklch(0.929 0.013 255.508);
-  --sidebar-ring: oklch(0.704 0.04 256.788);
+  --sidebar: oklch(0.97 0.01 240);
+  --sidebar-foreground: oklch(0.22 0.06 255);
+  --sidebar-primary: oklch(0.32 0.10 255);
+  --sidebar-primary-foreground: oklch(0.99 0.003 240);
+  --sidebar-accent: oklch(0.72 0.13 80);
+  --sidebar-accent-foreground: oklch(0.22 0.06 255);
+  --sidebar-border: oklch(0.90 0.02 240);
+  --sidebar-ring: oklch(0.32 0.10 255);
+  /* TU support colors */
+  --tu-marine: oklch(0.32 0.10 255);
+  --tu-brons: oklch(0.72 0.13 80);
+  --tu-mos: oklch(0.62 0.16 135);
+  --tu-ocean: oklch(0.65 0.14 230);
 }
 
 .dark {
@@ -140,5 +148,11 @@
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
+    font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
+    letter-spacing: -0.01em;
   }
 }
