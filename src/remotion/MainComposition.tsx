@@ -4,6 +4,10 @@ import { TitleScene } from "./scenes/TitleScene";
 import { TalkingPointScene } from "./scenes/TalkingPointScene";
 import { ImageCaptionScene } from "./scenes/ImageCaptionScene";
 import { OutroScene } from "./scenes/OutroScene";
+import { CinematicTitleScene } from "./scenes/CinematicTitleScene";
+import { SplitVideoScene } from "./scenes/SplitVideoScene";
+import { LowerThirdScene } from "./scenes/LowerThirdScene";
+import { QuoteVideoScene } from "./scenes/QuoteVideoScene";
 
 function RenderScene({ scene }: { scene: Scene }) {
   switch (scene.type) {
@@ -15,6 +19,14 @@ function RenderScene({ scene }: { scene: Scene }) {
       return <ImageCaptionScene {...scene} />;
     case "outro":
       return <OutroScene {...scene} />;
+    case "cinematic-title":
+      return <CinematicTitleScene {...scene} />;
+    case "split-video":
+      return <SplitVideoScene {...scene} />;
+    case "lower-third":
+      return <LowerThirdScene {...scene} />;
+    case "quote-video":
+      return <QuoteVideoScene {...scene} />;
   }
 }
 
