@@ -32,13 +32,27 @@ export const renderVideo = createServerFn({ method: "POST" })
       return { ok: false as const, error: "Not your project" };
     }
 
-    // Resolve audio path → signed URL the worker can fetch over the network.
+    // Resolve audio path -> signed URL the worker can fetch over the network.
     let audioUrl: string | null = null;
     if (project.audio_url) {
       const { data: signed } = await supabase.storage
         .from("video-audio")
         .createSignedUrl(project.audio_url, 60 * 60);
       audioUrl = signed?.signedUrl ?? null;
+    }
+
+    // Pre-create a signed UPLOAD URL the worker can PUT the MP4 to.
+    // No Supabase keys ever leave Lovable.
+    const jobId = crypto.randomUUID();
+    const objectPath = `${userId}/${project.id}/${jobId}.mp4`;
+    const { data: upload, error: upErr } = await supabase.storage
+      .from("video-exports")
+      .createSignedUploadUrl(objectPath);
+    if (upErr || !upload) {
+      return {
+        ok: false as const,
+        error: `Could not create upload URL: ${upErr?.message ?? "unknown"}`,
+      };
     }
 
     const composition = {
@@ -59,8 +73,8 @@ export const renderVideo = createServerFn({ method: "POST" })
         },
         body: JSON.stringify({
           projectId: project.id,
-          userId,
           composition,
+          uploadUrl: upload.signedUrl,
         }),
       });
     } catch (e) {
@@ -74,14 +88,31 @@ export const renderVideo = createServerFn({ method: "POST" })
     if (!resp.ok) {
       return { ok: false as const, error: `Worker error ${resp.status}: ${text.slice(0, 500)}` };
     }
-    let json: { url?: string; path?: string; sizeBytes?: number };
+    let json: { ok?: boolean; sizeBytes?: number };
     try {
       json = JSON.parse(text);
     } catch {
       return { ok: false as const, error: "Worker returned invalid JSON" };
     }
-    if (!json.url) {
-      return { ok: false as const, error: "Worker did not return a download URL" };
+    if (!json.ok) {
+      return { ok: false as const, error: "Worker did not confirm upload" };
     }
-    return { ok: true as const, url: json.url, path: json.path, sizeBytes: json.sizeBytes };
+
+    // Now create a 24h signed DOWNLOAD URL for the freshly uploaded MP4.
+    const { data: dl, error: dlErr } = await supabase.storage
+      .from("video-exports")
+      .createSignedUrl(objectPath, 60 * 60 * 24);
+    if (dlErr || !dl) {
+      return {
+        ok: false as const,
+        error: `Render succeeded but could not sign download URL: ${dlErr?.message ?? "unknown"}`,
+      };
+    }
+
+    return {
+      ok: true as const,
+      url: dl.signedUrl,
+      path: objectPath,
+      sizeBytes: json.sizeBytes,
+    };
   });
