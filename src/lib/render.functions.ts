@@ -1,22 +1,53 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import {
+  renderMediaOnLambda,
+  getRenderProgress,
+} from "@remotion/lambda-client";
 
-const Input = z.object({ projectId: z.string().uuid() });
+const StartInput = z.object({ projectId: z.string().uuid() });
+const ProgressInput = z.object({
+  renderId: z.string(),
+  bucketName: z.string(),
+});
+
+function lambdaConfig() {
+  const region = process.env.REMOTION_AWS_REGION;
+  const functionName = process.env.REMOTION_LAMBDA_FUNCTION_NAME;
+  const serveUrl = process.env.REMOTION_LAMBDA_SERVE_URL;
+  const accessKeyId = process.env.REMOTION_AWS_ACCESS_KEY_ID;
+  const secretAccessKey = process.env.REMOTION_AWS_SECRET_ACCESS_KEY;
+  const missing = [
+    !region && "REMOTION_AWS_REGION",
+    !functionName && "REMOTION_LAMBDA_FUNCTION_NAME",
+    !serveUrl && "REMOTION_LAMBDA_SERVE_URL",
+    !accessKeyId && "REMOTION_AWS_ACCESS_KEY_ID",
+    !secretAccessKey && "REMOTION_AWS_SECRET_ACCESS_KEY",
+  ].filter(Boolean) as string[];
+  if (missing.length) {
+    return {
+      ok: false as const,
+      error: `Remotion Lambda is not configured. Missing secrets: ${missing.join(
+        ", ",
+      )}. See plan for AWS setup steps.`,
+    };
+  }
+  // @remotion/lambda-client reads AWS creds from process.env.REMOTION_AWS_*
+  return {
+    ok: true as const,
+    region: region as any,
+    functionName: functionName!,
+    serveUrl: serveUrl!,
+  };
+}
 
 export const renderVideo = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => Input.parse(input))
+  .inputValidator((input) => StartInput.parse(input))
   .handler(async ({ data, context }) => {
-    const workerUrl = process.env.RENDER_WORKER_URL;
-    const workerToken = process.env.RENDER_WORKER_TOKEN;
-    if (!workerUrl || !workerToken) {
-      return {
-        ok: false as const,
-        error:
-          "Render worker is not configured. Add RENDER_WORKER_URL and RENDER_WORKER_TOKEN secrets, then deploy the render-worker container on Hetzner (see render-worker/README.md).",
-      };
-    }
+    const cfg = lambdaConfig();
+    if (!cfg.ok) return cfg;
 
     const { supabase, userId } = context;
 
@@ -32,7 +63,6 @@ export const renderVideo = createServerFn({ method: "POST" })
       return { ok: false as const, error: "Not your project" };
     }
 
-    // Resolve audio path → signed URL the worker can fetch over the network.
     let audioUrl: string | null = null;
     if (project.audio_url) {
       const { data: signed } = await supabase.storage
@@ -49,39 +79,57 @@ export const renderVideo = createServerFn({ method: "POST" })
       height: project.height ?? 1080,
     };
 
-    let resp: Response;
     try {
-      resp = await fetch(`${workerUrl.replace(/\/$/, "")}/render`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${workerToken}`,
+      const { renderId, bucketName } = await renderMediaOnLambda({
+        region: cfg.region,
+        functionName: cfg.functionName,
+        serveUrl: cfg.serveUrl,
+        composition: "main",
+        inputProps: composition,
+        codec: "h264",
+        imageFormat: "jpeg",
+        maxRetries: 1,
+        privacy: "public",
+        downloadBehavior: {
+          type: "download",
+          fileName: `${project.title || "video"}.mp4`,
         },
-        body: JSON.stringify({
-          projectId: project.id,
-          userId,
-          composition,
-        }),
       });
+      return { ok: true as const, renderId, bucketName };
     } catch (e) {
       return {
         ok: false as const,
-        error: `Could not reach render worker: ${e instanceof Error ? e.message : String(e)}`,
+        error: `Could not start Lambda render: ${e instanceof Error ? e.message : String(e)}`,
       };
     }
+  });
 
-    const text = await resp.text();
-    if (!resp.ok) {
-      return { ok: false as const, error: `Worker error ${resp.status}: ${text.slice(0, 500)}` };
-    }
-    let json: { url?: string; path?: string; sizeBytes?: number };
+export const getRenderStatus = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => ProgressInput.parse(input))
+  .handler(async ({ data }) => {
+    const cfg = lambdaConfig();
+    if (!cfg.ok) return cfg;
     try {
-      json = JSON.parse(text);
-    } catch {
-      return { ok: false as const, error: "Worker returned invalid JSON" };
+      const progress = await getRenderProgress({
+        renderId: data.renderId,
+        bucketName: data.bucketName,
+        functionName: cfg.functionName,
+        region: cfg.region,
+      });
+      return {
+        ok: true as const,
+        done: progress.done,
+        overallProgress: progress.overallProgress,
+        outputFile: progress.outputFile ?? null,
+        outputSizeInBytes: progress.outputSizeInBytes ?? null,
+        errors: progress.errors?.map((e) => e.message) ?? [],
+        fatalErrorEncountered: progress.fatalErrorEncountered ?? false,
+      };
+    } catch (e) {
+      return {
+        ok: false as const,
+        error: `Could not fetch render progress: ${e instanceof Error ? e.message : String(e)}`,
+      };
     }
-    if (!json.url) {
-      return { ok: false as const, error: "Worker did not return a download URL" };
-    }
-    return { ok: true as const, url: json.url, path: json.path, sizeBytes: json.sizeBytes };
   });
