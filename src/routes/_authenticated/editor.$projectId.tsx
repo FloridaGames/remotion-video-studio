@@ -21,6 +21,7 @@ import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
 import { Plus, Trash2, GripVertical, Download } from "lucide-react";
+import { StockVideoPicker } from "@/components/StockVideoPicker";
 
 export const Route = createFileRoute("/_authenticated/editor/$projectId")({
   component: EditorPage,
@@ -383,6 +384,68 @@ function Inspector({
           </Field>
         </>
       )}
+      {scene.type === "cinematic-title" && (
+        <>
+          <VideoField url={scene.videoUrl} onPick={(videoUrl) => onChange({ videoUrl })} />
+          <Field label="Title">
+            <Input value={scene.title} onChange={(e) => onChange({ title: e.target.value })} />
+          </Field>
+          <Field label="Subtitle">
+            <Input value={scene.subtitle} onChange={(e) => onChange({ subtitle: e.target.value })} />
+          </Field>
+        </>
+      )}
+      {scene.type === "split-video" && (
+        <>
+          <VideoField url={scene.videoUrl} onPick={(videoUrl) => onChange({ videoUrl })} />
+          <Field label="Video side">
+            <div className="flex gap-2">
+              {(["left", "right"] as const).map((side) => (
+                <button
+                  key={side}
+                  type="button"
+                  onClick={() => onChange({ videoSide: side })}
+                  className={`flex-1 rounded-md border px-3 py-1.5 text-sm capitalize ${
+                    scene.videoSide === side
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border hover:border-primary"
+                  }`}
+                >
+                  {side}
+                </button>
+              ))}
+            </div>
+          </Field>
+          <Field label="Heading">
+            <Input value={scene.heading} onChange={(e) => onChange({ heading: e.target.value })} />
+          </Field>
+          <Field label="Body">
+            <Textarea rows={4} value={scene.body} onChange={(e) => onChange({ body: e.target.value })} />
+          </Field>
+        </>
+      )}
+      {scene.type === "lower-third" && (
+        <>
+          <VideoField url={scene.videoUrl} onPick={(videoUrl) => onChange({ videoUrl })} />
+          <Field label="Name">
+            <Input value={scene.name} onChange={(e) => onChange({ name: e.target.value })} />
+          </Field>
+          <Field label="Role / affiliation">
+            <Textarea rows={2} value={scene.role} onChange={(e) => onChange({ role: e.target.value })} />
+          </Field>
+        </>
+      )}
+      {scene.type === "quote-video" && (
+        <>
+          <VideoField url={scene.videoUrl} onPick={(videoUrl) => onChange({ videoUrl })} />
+          <Field label="Quote">
+            <Textarea rows={4} value={scene.quote} onChange={(e) => onChange({ quote: e.target.value })} />
+          </Field>
+          <Field label="Attribution">
+            <Input value={scene.attribution} onChange={(e) => onChange({ attribution: e.target.value })} />
+          </Field>
+        </>
+      )}
     </div>
   );
 }
@@ -392,6 +455,31 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     <div className="space-y-1.5">
       <Label>{label}</Label>
       {children}
+    </div>
+  );
+}
+
+function VideoField({ url, onPick }: { url: string; onPick: (url: string) => void }) {
+  return (
+    <div className="space-y-1.5">
+      <Label>Stock video</Label>
+      <div className="overflow-hidden rounded-md border border-border bg-black">
+        {url ? (
+          <video src={url} muted loop autoPlay playsInline className="aspect-video w-full object-cover" />
+        ) : (
+          <div className="flex aspect-video items-center justify-center text-xs text-muted-foreground">
+            No video selected
+          </div>
+        )}
+      </div>
+      <div className="flex gap-2">
+        <StockVideoPicker currentUrl={url} onPick={onPick} />
+        {url && (
+          <Button variant="ghost" size="sm" type="button" onClick={() => onPick("")}>
+            Clear
+          </Button>
+        )}
+      </div>
     </div>
   );
 }
