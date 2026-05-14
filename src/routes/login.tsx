@@ -49,6 +49,9 @@ function LoginPage() {
         <p className="mt-6 text-sm text-muted-foreground">
           New here? <Link to="/signup" className="text-primary underline">Create an account</Link>
         </p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Forgot your password? <Link to="/forgot-password" className="text-primary underline">Reset it</Link>
+        </p>
       </main>
     </div>
   );
