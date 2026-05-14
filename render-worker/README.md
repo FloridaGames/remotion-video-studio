@@ -1,60 +1,36 @@
-# TU Explainer — Render Worker (Hetzner)
+# TU Explainer — Render Worker (Hetzner + Coolify)
 
 A small Node service that renders the same Remotion compositions used by the
-app and uploads the resulting MP4 to Lovable Cloud storage. Deploy this to a
-Hetzner Cloud server (CPX31 or larger recommended).
+Lovable app, then PUTs the MP4 to a one-time signed upload URL provided by
+Lovable Cloud.
+
+**No Supabase credentials live on this server.** The worker only needs a
+shared bearer token so Lovable can authenticate to it.
 
 ## What it does
 
-- `POST /render` — accepts a project composition, renders it with
-  `@remotion/renderer`, uploads the MP4 to the `video-exports` bucket, and
-  returns a 24h signed URL.
-- Bundles the Remotion code once at boot, so subsequent renders are fast.
-- Authenticated with a shared bearer token (`RENDER_WORKER_TOKEN`).
+- `POST /render` accepts `{ projectId, composition, uploadUrl }`
+- Renders the composition with `@remotion/renderer`
+- `PUT`s the resulting MP4 to `uploadUrl`
+- Returns `{ ok: true, sizeBytes }`
 
-## Deploy on Hetzner (Docker)
+Lovable then creates a 24h signed download URL and shows it to the user.
 
-1. Create a Hetzner Cloud server. Recommended: **CPX31** (4 vCPU, 8 GB) for
-   1080p30 renders. Use Ubuntu 24.04.
-2. Install Docker:
-   ```bash
-   curl -fsSL https://get.docker.com | sh
-   ```
-3. Clone this repo on the server (or upload it via scp / rsync):
-   ```bash
-   git clone <your-repo> tu-explainer && cd tu-explainer
-   ```
-4. Build the image. **Build context must be the repo root** so the worker
-   can include `src/remotion/`:
-   ```bash
-   docker build -f render-worker/Dockerfile -t tu-render-worker .
-   ```
-5. Generate a strong shared token (paste this same value into Lovable secrets
-   as `RENDER_WORKER_TOKEN`):
-   ```bash
-   openssl rand -hex 32
-   ```
-6. Run the container:
-   ```bash
-   docker run -d --restart=always --name render-worker \
-     -p 8080:8080 \
-     -e RENDER_WORKER_TOKEN='paste-token-here' \
-     -e SUPABASE_URL='https://upbxnclkelhljiddnots.supabase.co' \
-     -e SUPABASE_SERVICE_ROLE_KEY='paste-service-role-key-here' \
-     tu-render-worker
-   ```
-   Get the service-role key from Lovable Cloud → Backend → API.
-7. Put it behind HTTPS. Easiest: install Caddy and point a subdomain
-   (e.g. `render.your-domain.com`) at port 8080:
-   ```bash
-   apt install -y caddy
-   echo 'render.your-domain.com {
-     reverse_proxy localhost:8080
-   }' > /etc/caddy/Caddyfile
-   systemctl reload caddy
-   ```
-   Caddy auto-provisions Let's Encrypt certificates.
-8. Health check:
+## Deploy with Coolify
+
+1. In Coolify, create a new resource → **Application** → **Public Repository**
+   (or your private GitHub repo).
+2. **Build Pack:** Dockerfile.
+3. **Base Directory:** `/` (repo root). The Dockerfile must be able to copy
+   `src/remotion/` from the repo root.
+4. **Dockerfile Location:** `render-worker/Dockerfile`.
+5. **Port:** `8080`.
+6. **Environment Variables** — add ONE secret:
+   - `RENDER_WORKER_TOKEN` = a long random string. Generate with
+     `openssl rand -hex 32` on your laptop, or let Coolify generate one.
+7. **Domain:** assign a subdomain like `render.your-domain.com`. Coolify
+   provisions HTTPS via Let's Encrypt automatically.
+8. Deploy. Health check:
    ```bash
    curl https://render.your-domain.com/health
    # → {"ok":true}
@@ -62,24 +38,19 @@ Hetzner Cloud server (CPX31 or larger recommended).
 
 ## Add the two secrets to Lovable
 
-- `RENDER_WORKER_URL` — `https://render.your-domain.com`
-- `RENDER_WORKER_TOKEN` — the same value as on the server
+In Lovable → Cloud → Secrets, add:
+
+- `RENDER_WORKER_URL` = `https://render.your-domain.com`
+- `RENDER_WORKER_TOKEN` = the same value you set in Coolify
+
+That's it. No Supabase service-role key, no AWS account.
 
 ## Updating compositions
 
-Whenever you change scene templates in `src/remotion/`, rebuild and restart
-the worker on the Hetzner box:
-
-```bash
-cd tu-explainer && git pull
-docker build -f render-worker/Dockerfile -t tu-render-worker .
-docker stop render-worker && docker rm render-worker
-# then re-run the `docker run` command from step 6
-```
+Whenever you change scene templates in `src/remotion/`, push to the
+connected branch — Coolify rebuilds and redeploys automatically.
 
 ## Sizing notes
 
-- 1080p30 ~30s clips render in ~30–90s on CPX31.
+- 1080p30 ~30s clips render in ~30–90s on a CPX31 (4 vCPU / 8 GB).
 - Worker renders one job at a time (concurrency=1) to keep memory bounded.
-  For parallel renders, run multiple containers behind a load balancer or
-  scale up to CCX-class CPU servers.
