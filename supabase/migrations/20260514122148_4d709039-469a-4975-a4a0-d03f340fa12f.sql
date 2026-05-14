@@ -1,0 +1,1 @@
+insert into storage.buckets (id, name, public) values ('video-exports', 'video-exports', false) on conflict (id) do nothing;
