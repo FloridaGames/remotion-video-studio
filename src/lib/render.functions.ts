@@ -123,7 +123,7 @@ export const getRenderStatus = createServerFn({ method: "POST" })
         overallProgress: progress.overallProgress,
         outputFile: progress.outputFile ?? null,
         outputSizeInBytes: progress.outputSizeInBytes ?? null,
-        errors: progress.errors?.map((e) => e.message) ?? [],
+        errors: progress.errors?.map((e: { message: string }) => e.message) ?? [],
         fatalErrorEncountered: progress.fatalErrorEncountered ?? false,
       };
     } catch (e) {
