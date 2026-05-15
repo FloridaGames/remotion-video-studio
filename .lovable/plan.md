@@ -1,77 +1,49 @@
-## What you'll get
+## Goal
 
-A web app where TU staff/students sign in, build short explainer videos by editing scene-based templates, preview them live in the browser, and export real MP4 files.
+Let users pick videos from four sources in the editor instead of just Pexels:
+1. **My uploads** — personal videos uploaded once, reusable across projects
+2. **Paste URL** — any public video URL (own CDN, Vimeo direct .mp4, etc.)
+3. **Tilburg University library** — shared org assets visible to all users
+4. Existing: Curated library + Pexels search
 
-## Pages
+No hard file-size limit; rely on Lovable Cloud storage quota. MP4/WebM/MOV accepted.
 
-- `/` — landing: explain the tool, "Sign in to start" CTA, TU brand
-- `/login` — email/password + Google sign-in (Lovable Cloud auth)
-- `/projects` — dashboard of saved videos (list, new, duplicate, delete)
-- `/editor/$projectId` — the composer (the heart of the app)
-- `/export/$projectId` — kicks off Lambda render, polls progress, downloads MP4
+## What gets built
 
-## Editor layout
+### 1. Storage (one migration)
+- New private bucket `video-uploads` — per-user uploads (path `<userId>/<uuid>.<ext>`)
+- New public bucket `video-org-library` — admin-curated shared clips
+- New table `video_uploads` (id, user_id, storage_path, title, mime_type, size_bytes, duration_seconds nullable, created_at) with RLS: users see/insert/delete only their own rows
+- New table `org_videos` (id, storage_path, title, thumb_url nullable, tags text[], created_at) — readable by all authenticated users, no insert/update/delete policies (seeded by you via SQL or admin-only later)
+- RLS on `storage.objects` for both buckets following the standard `<userId>/...` pattern for `video-uploads`, public read for `video-org-library`
 
-Three columns:
-1. **Scene list** (left) — reorder, add/remove scenes; pick from 4 templates: Title card, Talking point, Image + caption, Outro
-2. **Live preview** (center) — `@remotion/player`, scrub timeline, play/pause
-3. **Inspector** (right) — for selected scene: text fields, image upload, duration slider, accent color toggle (Marine / Brons / Mos / Ocean)
+### 2. Server functions (`src/lib/video-library.functions.ts`)
+- `listMyUploads()` — returns user's uploads
+- `deleteMyUpload({ id })` — removes row + storage object
+- `listOrgVideos()` — returns all org library entries with public URLs
+- `validateExternalUrl({ url })` — HEAD-checks the URL, verifies `content-type` is video/*, returns `{ ok, contentType }`
 
-Top bar: project title (editable), audio track upload (one track for the whole video, auto-fits duration), Save (autosaves), Export.
+### 3. Stock video picker UI (`src/components/StockVideoPicker.tsx`)
+Replace 2-tab bar with 4 tabs: **My uploads · Paste URL · Org library · Curated · Pexels**.
+- **My uploads tab**: file input ("Upload video"), grid of user's uploads with thumbnail (first-frame `<video>` poster fallback), delete button per item. On pick, store as `upload://<storage_path>`.
+- **Paste URL tab**: input + "Use this URL" button → calls `validateExternalUrl`, on success stores the URL directly.
+- **Org library tab**: read-only grid of `org_videos` entries, public URLs.
+- **Curated / Pexels**: unchanged.
 
-## Templates (Remotion compositions)
+### 4. Render-time URL resolution (`src/lib/render.functions.ts`)
+Before sending the composition to the Hetzner worker, walk all scenes with a `videoUrl`:
+- If URL starts with `upload://<path>` → create a 6-hour signed URL from `video-uploads` bucket using `supabaseAdmin` and substitute it.
+- Otherwise pass through unchanged.
+This keeps stored project data stable (signed URLs expire) while giving the worker a fetchable URL at render time.
 
-Each template is a small Remotion component with typed props, animated with `interpolate` / `spring`:
-- **Title** — big Marine title + subtitle, Brons underline reveal
-- **Talking point** — bullet list with staggered entrance
-- **Image + caption** — uploaded image with Ken Burns pan, caption block
-- **Outro** — TU wordmark area + closing message
+### 5. Editor preview (`editor.$projectId.tsx`)
+The `<VideoField>` already renders whatever URL is in the scene. For `upload://...` values, resolve to a signed URL via `useSignedUrl` so the preview plays in the browser. Small wrapper hook `useResolvedVideoUrl(value)` handles both cases.
 
-All scenes share TU brand tokens (Marine #003366, Brons #cc9933, Arial), driven by oklch tokens in `src/styles.css`.
+## Out of scope
+- Admin UI for managing the org library (seed via SQL for now; you said you'd manage via Lovable Cloud directly)
+- Auto-generated thumbnails for uploads (use `<video preload="metadata">` and seek to 0s as poster — good enough)
+- Video transcoding / format conversion
+- Per-upload usage tracking
 
-## Data
-
-Lovable Cloud (Supabase) provides:
-- **auth** — email/password + Google
-- **`profiles`** table — id (= auth user), display_name, created_at
-- **`projects`** table — id, user_id, title, scenes (JSONB array), audio_url, fps, width, height, updated_at; RLS: owner-only
-- **storage buckets** — `video-images` (public read), `video-audio` (public read), each with owner-write RLS
-
-## Export pipeline (the part that needs your setup)
-
-Cloudflare Workers can't render video, so we use **Remotion Lambda**. The TanStack server function calls `@remotion/lambda-client.renderMediaOnLambda()`, which triggers your AWS Lambda to render and writes the MP4 to S3. The UI polls progress and shows the download URL when done.
-
-**You'll need to do this once in your AWS account** (I'll guide you with exact commands when we get there):
-1. Create AWS account, IAM user with Remotion's required policies
-2. From your local machine: `npx remotion lambda functions deploy`
-3. From your local machine: `npx remotion lambda sites create src/remotion/index.ts` (using the same Remotion code we ship in this app)
-4. Give me 5 secrets via the secrets tool: `REMOTION_AWS_ACCESS_KEY_ID`, `REMOTION_AWS_SECRET_ACCESS_KEY`, `REMOTION_AWS_REGION`, `REMOTION_LAMBDA_FUNCTION_NAME`, `REMOTION_LAMBDA_SERVE_URL`
-
-Until those secrets exist, the Export button shows a setup-instructions screen instead of failing silently.
-
-## Build order
-
-1. Enable Lovable Cloud, set up auth (email + Google), profiles trigger, projects table, storage buckets, RLS
-2. Set TU design tokens in `src/styles.css` (oklch Marine/Brons/Mos/Ocean + Arial)
-3. Build Remotion compositions under `src/remotion/` (templates + Root + composition registration)
-4. Build `/login`, `/projects`, `/editor/$projectId` with `@remotion/player` preview
-5. Wire image upload → Storage; audio upload → Storage; autosave to `projects` table
-6. Build server function for Lambda render + status polling; build `/export/$projectId` UI
-7. Landing page + sitemap/robots
-
-## Out of scope for v1 (call out so we agree)
-
-- No collaborative editing (one user per project)
-- No animated transitions between scenes (just hard cuts; can add later)
-- No per-scene audio clips (one global audio track)
-- No subtitle/caption auto-generation
-- No template designer (the 4 templates are hardcoded; you can ask me to add more)
-
-## Technical notes
-
-- TanStack Start (existing template), Tailwind, Lovable Cloud (Supabase under the hood)
-- `remotion`, `@remotion/player`, `@remotion/lambda-client` as new deps
-- Server function uses `@remotion/lambda-client` over HTTP — should run in the Cloudflare Worker runtime; if it hits a Node-only API at build I'll fall back to a thin AWS SDK v3 Lambda invoke
-- Editor state: single Zustand-ish reducer over the project's `scenes` JSONB; persisted to the `projects` row with debounced autosave
-
-Approve and I'll start at step 1.
+## Open question to confirm before building
+The editor currently autosaves scene `videoUrl` as a string. Storing `upload://<path>` is a sentinel my render layer rewrites. Confirm OK — the alternative is widening the Scene type to `{ kind: 'url' | 'upload', value: string }`, which is cleaner but touches every video scene type and the Remotion components. Sentinel string is ~10× less code; recommended unless you want the cleaner shape.
