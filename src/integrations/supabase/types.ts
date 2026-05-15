@@ -200,6 +200,57 @@ export type Database = {
         }
         Relationships: []
       }
+      video_transcode_jobs: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          error: string | null
+          id: string
+          output_path: string | null
+          output_upload_id: string | null
+          source_filename: string
+          source_mime_type: string | null
+          source_path: string
+          source_size_bytes: number | null
+          started_at: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          output_path?: string | null
+          output_upload_id?: string | null
+          source_filename: string
+          source_mime_type?: string | null
+          source_path: string
+          source_size_bytes?: number | null
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          output_path?: string | null
+          output_upload_id?: string | null
+          source_filename?: string
+          source_mime_type?: string | null
+          source_path?: string
+          source_size_bytes?: number | null
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       video_uploads: {
         Row: {
           created_at: string
