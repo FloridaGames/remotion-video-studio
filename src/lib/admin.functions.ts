@@ -234,7 +234,10 @@ export const createOrgVideoUploadUrl = createServerFn({ method: "POST" })
   .inputValidator((input) => SignedUploadInput.parse(input))
   .handler(async ({ data, context }) => {
     await assertAdmin(context.userId);
-    const ext = data.filename.split(".").pop() || "mp4";
+    const ext = data.filename.split(".").pop()?.toLowerCase() || "";
+    if (ext !== "mp4") {
+      throw new Error("Only .mp4 files are allowed for the org library.");
+    }
     const safeBase = data.filename
       .replace(/\.[^.]+$/, "")
       .replace(/[^a-zA-Z0-9_-]+/g, "-")
