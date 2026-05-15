@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      org_videos: {
+        Row: {
+          created_at: string
+          id: string
+          storage_path: string
+          tags: string[]
+          thumb_url: string | null
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          storage_path: string
+          tags?: string[]
+          thumb_url?: string | null
+          title: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          storage_path?: string
+          tags?: string[]
+          thumb_url?: string | null
+          title?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -77,6 +104,36 @@ export type Database = {
           updated_at?: string
           user_id?: string
           width?: number
+        }
+        Relationships: []
+      }
+      video_uploads: {
+        Row: {
+          created_at: string
+          id: string
+          mime_type: string | null
+          size_bytes: number | null
+          storage_path: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          mime_type?: string | null
+          size_bytes?: number | null
+          storage_path: string
+          title: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          mime_type?: string | null
+          size_bytes?: number | null
+          storage_path?: string
+          title?: string
+          user_id?: string
         }
         Relationships: []
       }
