@@ -156,11 +156,18 @@ export const renderVideo = createServerFn({ method: "POST" })
       };
     }
 
+    // Log the successful render for admin metrics.
+    await supabaseAdmin.from("render_logs").insert({
+      user_id: userId,
+      project_id: project.id,
+      status: "success",
+      size_bytes: json.sizeBytes ?? null,
+    });
+
     return {
       ok: true as const,
       url: dl.signedUrl,
       path: objectPath,
       sizeBytes: json.sizeBytes,
     };
-    // unreachable: see below; we now log before returning.
   });
