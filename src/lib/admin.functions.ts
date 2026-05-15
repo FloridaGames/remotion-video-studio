@@ -3,8 +3,6 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
-export const DEFAULT_RENDER_QUOTA = 100;
-
 async function assertAdmin(userId: string) {
   const { data, error } = await supabaseAdmin.rpc("is_admin", { _user_id: userId });
   if (error) throw new Error(`Admin check failed: ${error.message}`);
