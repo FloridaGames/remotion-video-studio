@@ -14,6 +14,21 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_emails: {
+        Row: {
+          created_at: string
+          email: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+        }
+        Relationships: []
+      }
       org_videos: {
         Row: {
           created_at: string
@@ -107,6 +122,84 @@ export type Database = {
         }
         Relationships: []
       }
+      render_logs: {
+        Row: {
+          created_at: string
+          id: string
+          project_id: string | null
+          size_bytes: number | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          project_id?: string | null
+          size_bytes?: number | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          project_id?: string | null
+          size_bytes?: number | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_restrictions: {
+        Row: {
+          locked: boolean
+          monthly_render_limit: number | null
+          read_only: boolean
+          updated_at: string
+          uploads_disabled: boolean
+          user_id: string
+        }
+        Insert: {
+          locked?: boolean
+          monthly_render_limit?: number | null
+          read_only?: boolean
+          updated_at?: string
+          uploads_disabled?: boolean
+          user_id: string
+        }
+        Update: {
+          locked?: boolean
+          monthly_render_limit?: number | null
+          read_only?: boolean
+          updated_at?: string
+          uploads_disabled?: boolean
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_sessions: {
+        Row: {
+          ended_at: string | null
+          id: string
+          last_seen_at: string
+          started_at: string
+          user_id: string
+        }
+        Insert: {
+          ended_at?: string | null
+          id?: string
+          last_seen_at?: string
+          started_at?: string
+          user_id: string
+        }
+        Update: {
+          ended_at?: string | null
+          id?: string
+          last_seen_at?: string
+          started_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       video_uploads: {
         Row: {
           created_at: string
@@ -142,7 +235,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      are_uploads_disabled: { Args: { _user_id: string }; Returns: boolean }
+      is_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_user_locked: { Args: { _user_id: string }; Returns: boolean }
+      is_user_read_only: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
       [_ in never]: never
