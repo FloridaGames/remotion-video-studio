@@ -86,6 +86,7 @@ export type Database = {
           height: number
           id: string
           last_render_url: string | null
+          mode: string
           scenes: Json
           title: string
           updated_at: string
@@ -100,6 +101,7 @@ export type Database = {
           height?: number
           id?: string
           last_render_url?: string | null
+          mode?: string
           scenes?: Json
           title?: string
           updated_at?: string
@@ -114,6 +116,7 @@ export type Database = {
           height?: number
           id?: string
           last_render_url?: string | null
+          mode?: string
           scenes?: Json
           title?: string
           updated_at?: string
