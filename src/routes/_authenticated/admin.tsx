@@ -444,6 +444,11 @@ function AddOrgVideoDialog({
       toast.error("Title and file are required");
       return;
     }
+    const ext = file.name.split(".").pop()?.toLowerCase();
+    if (ext !== "mp4") {
+      toast.error("Only .mp4 files are allowed. Please convert your video to MP4 before uploading.");
+      return;
+    }
     setUploading(true);
     try {
       setProgress("Preparing upload…");
@@ -499,7 +504,7 @@ function AddOrgVideoDialog({
             <Input
               id="file"
               type="file"
-              accept="video/*"
+              accept=".mp4,video/mp4"
               onChange={(e) => setFile(e.target.files?.[0] ?? null)}
               className="mt-1"
             />
