@@ -50,7 +50,6 @@ function presentationFor(kind: TransitionKind): any {
 
 export function MainComposition({ scenes, audioUrl, mode }: ProjectComposition) {
   if (mode === "multi") {
-    // Group by track. V1 (track=1) at z=1, V2 (track=2) at z=2, etc.
     const tracks = new Map<number, Scene[]>();
     for (const s of scenes) {
       const t = s.track ?? 1;
@@ -60,22 +59,58 @@ export function MainComposition({ scenes, audioUrl, mode }: ProjectComposition) 
     const sortedTrackKeys = Array.from(tracks.keys()).sort((a, b) => a - b);
     return (
       <AbsoluteFill style={{ backgroundColor: "#0b1a2e" }}>
-        {sortedTrackKeys.map((track) => (
-          <AbsoluteFill key={track} style={{ zIndex: track }}>
-            {tracks.get(track)!.map((s) => (
-              <Sequence
-                key={s.id}
-                from={s.startFrame ?? 0}
-                durationInFrames={Math.max(1, s.durationFrames)}
-                layout="none"
-              >
-                <AbsoluteFill>
-                  <RenderScene scene={s} />
-                </AbsoluteFill>
+        {sortedTrackKeys.map((track) => {
+          const clips = tracks
+            .get(track)!
+            .slice()
+            .sort((a, b) => (a.startFrame ?? 0) - (b.startFrame ?? 0));
+          if (clips.length === 0) return null;
+          const trackStart = clips[0].startFrame ?? 0;
+          const items: React.ReactNode[] = [];
+          for (let i = 0; i < clips.length; i++) {
+            const s = clips[i];
+            const dur = Math.max(1, s.durationFrames);
+            items.push(
+              <TransitionSeries.Sequence key={s.id} durationInFrames={dur}>
+                <RenderScene scene={s} />
+              </TransitionSeries.Sequence>,
+            );
+            const next = clips[i + 1];
+            if (!next) continue;
+            const curStart = s.startFrame ?? 0;
+            const nextStart = next.startFrame ?? 0;
+            const nextDur = Math.max(1, next.durationFrames);
+            const gap = nextStart - (curStart + dur);
+            const t = s.transitionAfter;
+            if (t && gap <= 0) {
+              const maxOverlap = Math.max(1, Math.min(dur, nextDur) - 1);
+              const tFrames = Math.max(1, Math.min(t.durationFrames, maxOverlap));
+              items.push(
+                <TransitionSeries.Transition
+                  key={s.id + "-t"}
+                  presentation={presentationFor(t.kind)}
+                  timing={linearTiming({ durationInFrames: tFrames })}
+                />,
+              );
+            } else if (gap > 0) {
+              items.push(
+                <TransitionSeries.Sequence
+                  key={s.id + "-gap"}
+                  durationInFrames={gap}
+                >
+                  <AbsoluteFill />
+                </TransitionSeries.Sequence>,
+              );
+            }
+          }
+          return (
+            <AbsoluteFill key={track} style={{ zIndex: track }}>
+              <Sequence from={trackStart} layout="none">
+                <TransitionSeries>{items}</TransitionSeries>
               </Sequence>
-            ))}
-          </AbsoluteFill>
-        ))}
+            </AbsoluteFill>
+          );
+        })}
         {audioUrl ? <Audio src={audioUrl} /> : null}
       </AbsoluteFill>
     );
