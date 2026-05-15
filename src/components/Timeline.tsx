@@ -1,8 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { MainComposition } from "@/remotion/MainComposition";
 import { Thumbnail } from "@remotion/player";
-import type { ProjectComposition, Scene } from "@/remotion/types";
-import { SCENE_TEMPLATE_LABEL, ACCENT_HEX, totalDurationFrames } from "@/remotion/types";
+import type { ProjectComposition, Scene, SceneTransition, TransitionKind } from "@/remotion/types";
+import {
+  SCENE_TEMPLATE_LABEL,
+  ACCENT_HEX,
+  totalDurationFrames,
+  TRANSITION_LABEL,
+} from "@/remotion/types";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { X } from "lucide-react";
 
 type Props = {
   scenes: Scene[];
@@ -17,6 +24,7 @@ type Props = {
   onReorder: (fromIdx: number, toIdx: number) => void;
   onTrim: (id: string, durationFrames: number) => void;
   onSeek: (frame: number) => void;
+  onTransitionChange: (id: string, transition: SceneTransition | undefined) => void;
 };
 
 const SNAP_SECONDS = 0.5;
@@ -35,6 +43,7 @@ export function Timeline({
   onReorder,
   onTrim,
   onSeek,
+  onTransitionChange,
 }: Props) {
   const trackRef = useRef<HTMLDivElement | null>(null);
 
@@ -44,9 +53,17 @@ export function Timeline({
   const starts = useMemo(() => {
     const arr: number[] = [];
     let acc = 0;
-    for (const s of scenes) {
+    for (let i = 0; i < scenes.length; i++) {
+      const s = scenes[i];
       arr.push(acc);
       acc += Math.max(1, s.durationFrames);
+      const t = s.transitionAfter;
+      if (t && i < scenes.length - 1) {
+        const next = Math.max(1, scenes[i + 1].durationFrames);
+        const cur = Math.max(1, s.durationFrames);
+        const maxOverlap = Math.max(0, Math.min(cur, next) - 1);
+        acc -= Math.max(0, Math.min(t.durationFrames, maxOverlap));
+      }
     }
     return arr;
   }, [scenes]);
@@ -154,7 +171,7 @@ export function Timeline({
           Timeline
         </div>
         <div className="text-[10px] text-muted-foreground">
-          Drag block to reorder · Drag right edge to trim (snap 0.5s) · Click ruler to seek
+          Drag block to reorder · Drag right edge to trim · Click seam (○) to add transition
         </div>
       </div>
       <div className="overflow-x-auto" ref={trackRef}>
@@ -237,6 +254,82 @@ export function Timeline({
                     title="Drag to trim duration"
                   />
                 </div>
+              );
+            })}
+
+            {/* Transition seam handles (between adjacent scenes) */}
+            {blocks.slice(0, -1).map((b) => {
+              const t = b.scene.transitionAfter;
+              const seamLeft = b.left + b.width;
+              return (
+                <Popover key={b.scene.id + "-seam"}>
+                  <PopoverTrigger asChild>
+                    <button
+                      title={t ? `${TRANSITION_LABEL[t.kind]} ${(t.durationFrames / fps).toFixed(1)}s` : "Add transition"}
+                      className={`absolute top-1/2 z-30 -translate-x-1/2 -translate-y-1/2 rounded-full border text-[10px] font-bold leading-none ${
+                        t
+                          ? "h-5 w-5 border-primary bg-primary text-primary-foreground"
+                          : "h-4 w-4 border-border bg-background text-muted-foreground opacity-60 hover:opacity-100"
+                      }`}
+                      style={{ left: seamLeft }}
+                    >
+                      {t ? t.kind[0].toUpperCase() : "+"}
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-56 space-y-3 p-3" align="center">
+                    <div className="text-xs font-semibold">Transition</div>
+                    <div className="grid grid-cols-2 gap-1">
+                      {(Object.keys(TRANSITION_LABEL) as TransitionKind[]).map((k) => (
+                        <button
+                          key={k}
+                          onClick={() =>
+                            onTransitionChange(b.scene.id, {
+                              kind: k,
+                              durationFrames: t?.durationFrames ?? Math.round(fps * 0.5),
+                            })
+                          }
+                          className={`rounded-md border px-2 py-1 text-xs ${
+                            t?.kind === k
+                              ? "border-primary bg-primary/10 text-primary"
+                              : "border-border hover:bg-muted"
+                          }`}
+                        >
+                          {TRANSITION_LABEL[k]}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                        <span>Duration</span>
+                        <span className="font-mono">
+                          {((t?.durationFrames ?? Math.round(fps * 0.5)) / fps).toFixed(2)}s
+                        </span>
+                      </div>
+                      <input
+                        type="range"
+                        min={Math.max(1, Math.round(fps * 0.1))}
+                        max={Math.round(fps * 2)}
+                        step={1}
+                        value={t?.durationFrames ?? Math.round(fps * 0.5)}
+                        onChange={(e) =>
+                          onTransitionChange(b.scene.id, {
+                            kind: t?.kind ?? "fade",
+                            durationFrames: parseInt(e.target.value, 10),
+                          })
+                        }
+                        className="w-full"
+                      />
+                    </div>
+                    {t ? (
+                      <button
+                        onClick={() => onTransitionChange(b.scene.id, undefined)}
+                        className="flex w-full items-center justify-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-muted-foreground hover:bg-muted"
+                      >
+                        <X className="h-3 w-3" /> Remove transition
+                      </button>
+                    ) : null}
+                  </PopoverContent>
+                </Popover>
               );
             })}
 

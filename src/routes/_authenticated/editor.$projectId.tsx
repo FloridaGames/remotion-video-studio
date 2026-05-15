@@ -768,6 +768,9 @@ function EditorPage() {
             onReorder={reorderTo}
             onTrim={(id, durationFrames) => updateScene(id, { durationFrames })}
             onSeek={seekToFrame}
+            onTransitionChange={(id, transitionAfter) =>
+              updateScene(id, { transitionAfter } as any)
+            }
           />
         )}
         {viewMode === "timeline" && (
