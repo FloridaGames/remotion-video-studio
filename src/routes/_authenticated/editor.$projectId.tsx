@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Player } from "@remotion/player";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/use-auth";
-import { uploadToBucket, useSignedUrl } from "@/lib/use-signed-url";
+import { uploadToBucket, useSignedUrl, useResolvedUploadUrls } from "@/lib/use-signed-url";
 import { MainComposition } from "@/remotion/MainComposition";
 import {
   ACCENT_HEX,
@@ -94,9 +94,28 @@ function EditorPage() {
     };
   }, [title, scenes, audioPath, projectId, loading]);
 
+  const uploadSentinels = useMemo(
+    () =>
+      scenes
+        .map((s) => ("videoUrl" in s ? (s as { videoUrl?: string }).videoUrl : undefined))
+        .filter((v): v is string => typeof v === "string" && v.startsWith("upload://")),
+    [scenes],
+  );
+  const resolvedUploads = useResolvedUploadUrls("video-uploads", uploadSentinels);
+  const resolvedScenes = useMemo(
+    () =>
+      scenes.map((s) => {
+        const v = (s as { videoUrl?: string }).videoUrl;
+        if (typeof v === "string" && v.startsWith("upload://")) {
+          return { ...s, videoUrl: resolvedUploads[v] ?? "" } as Scene;
+        }
+        return s;
+      }),
+    [scenes, resolvedUploads],
+  );
   const composition = useMemo(
-    () => ({ scenes, audioUrl, fps, width, height }),
-    [scenes, audioUrl, fps, width, height],
+    () => ({ scenes: resolvedScenes, audioUrl, fps, width, height }),
+    [resolvedScenes, audioUrl, fps, width, height],
   );
   const durationInFrames = Math.max(1, totalDurationFrames(scenes));
   const selected = scenes.find((s) => s.id === selectedId) ?? null;
@@ -460,12 +479,27 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 function VideoField({ url, onPick }: { url: string; onPick: (url: string) => void }) {
+  const isUpload = url.startsWith("upload://");
+  const uploadPath = isUpload ? url.slice("upload://".length) : null;
+  const signed = useSignedUrl("video-uploads", uploadPath);
+  const previewUrl = isUpload ? signed : url;
   return (
     <div className="space-y-1.5">
       <Label>Stock video</Label>
       <div className="overflow-hidden rounded-md border border-border bg-black">
-        {url ? (
-          <video src={url} muted loop autoPlay playsInline className="aspect-video w-full object-cover" />
+        {url && previewUrl ? (
+          <video
+            src={previewUrl}
+            muted
+            loop
+            autoPlay
+            playsInline
+            className="aspect-video w-full object-cover"
+          />
+        ) : url && isUpload ? (
+          <div className="flex aspect-video items-center justify-center text-xs text-muted-foreground">
+            Loading preview…
+          </div>
         ) : (
           <div className="flex aspect-video items-center justify-center text-xs text-muted-foreground">
             No video selected
