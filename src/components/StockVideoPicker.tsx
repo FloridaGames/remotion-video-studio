@@ -545,3 +545,108 @@ export function StockVideoPicker({
     </Dialog>
   );
 }
+
+function fmtSize(b: number | null): string {
+  if (!b) return "";
+  if (b < 1024 * 1024) return `${(b / 1024).toFixed(0)} KB`;
+  if (b < 1024 * 1024 * 1024) return `${(b / (1024 * 1024)).toFixed(1)} MB`;
+  return `${(b / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+}
+
+function TranscodeQueuePanel({
+  jobs,
+  draining,
+  onStart,
+  onDelete,
+}: {
+  jobs: TranscodeJob[];
+  draining: boolean;
+  onStart: () => void;
+  onDelete: (id: string) => void;
+}) {
+  const pending = jobs.filter((j) => j.status === "pending").length;
+  const processing = jobs.filter((j) => j.status === "processing").length;
+  const failed = jobs.filter((j) => j.status === "failed").length;
+  return (
+    <div className="rounded-md border border-border bg-muted/40 p-3">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Transcoding queue
+        </div>
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          {pending > 0 && <span>{pending} pending</span>}
+          {processing > 0 && <span>· {processing} processing</span>}
+          {failed > 0 && <span className="text-destructive">· {failed} failed</span>}
+          <Button
+            type="button"
+            size="sm"
+            onClick={onStart}
+            disabled={draining || (pending === 0 && failed === 0)}
+            className="ml-2"
+          >
+            {draining ? (
+              <>
+                <Loader2 className="mr-1.5 h-3 w-3 animate-spin" /> Working…
+              </>
+            ) : (
+              <>
+                <Play className="mr-1.5 h-3 w-3" /> Start transcoding
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
+      <ul className="max-h-40 space-y-1 overflow-y-auto pr-1">
+        {jobs.map((j) => {
+          const Icon =
+            j.status === "done"
+              ? CheckCircle2
+              : j.status === "failed"
+                ? AlertCircle
+                : j.status === "processing"
+                  ? Loader2
+                  : Clock;
+          const tone =
+            j.status === "done"
+              ? "text-green-600"
+              : j.status === "failed"
+                ? "text-destructive"
+                : j.status === "processing"
+                  ? "text-primary"
+                  : "text-muted-foreground";
+          return (
+            <li
+              key={j.id}
+              className="flex items-center gap-2 rounded px-2 py-1 text-xs hover:bg-muted"
+              title={j.error ?? ""}
+            >
+              <Icon
+                className={`h-3.5 w-3.5 shrink-0 ${tone} ${j.status === "processing" ? "animate-spin" : ""}`}
+              />
+              <span className="flex-1 truncate">{j.sourceFilename}</span>
+              <span className="shrink-0 text-muted-foreground">
+                {fmtSize(j.sourceSizeBytes)}
+              </span>
+              <span className={`shrink-0 capitalize ${tone}`}>{j.status}</span>
+              {j.status !== "processing" && (
+                <button
+                  type="button"
+                  onClick={() => onDelete(j.id)}
+                  className="shrink-0 text-muted-foreground hover:text-destructive"
+                  title="Remove"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </button>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      {failed > 0 && (
+        <p className="mt-2 text-[11px] text-muted-foreground">
+          Hover a failed row to see the error. Click <Play className="inline h-3 w-3" /> to retry — failed jobs aren&apos;t auto-restarted.
+        </p>
+      )}
+    </div>
+  );
+}
