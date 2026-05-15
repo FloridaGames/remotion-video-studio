@@ -55,8 +55,25 @@ export const renderVideo = createServerFn({ method: "POST" })
       };
     }
 
+    // Resolve any user-uploaded video sentinels (upload://<storage_path>)
+    // into 6h signed URLs the worker can fetch.
+    const rawScenes = (project.scenes ?? []) as Array<Record<string, unknown>>;
+    const resolvedScenes = await Promise.all(
+      rawScenes.map(async (scene) => {
+        const v = scene.videoUrl;
+        if (typeof v === "string" && v.startsWith("upload://")) {
+          const path = v.slice("upload://".length);
+          const { data: signed } = await supabase.storage
+            .from("video-uploads")
+            .createSignedUrl(path, 60 * 60 * 6);
+          return { ...scene, videoUrl: signed?.signedUrl ?? "" };
+        }
+        return scene;
+      }),
+    );
+
     const composition = {
-      scenes: project.scenes ?? [],
+      scenes: resolvedScenes,
       audioUrl,
       fps: project.fps ?? 30,
       width: project.width ?? 1920,
