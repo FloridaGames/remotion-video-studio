@@ -271,3 +271,18 @@ export const processNextTranscodeJob = createServerFn({ method: "POST" })
       return { processed: true as const, jobId: job.id, error: msg };
     }
   });
+
+// Reset all of the current user's failed jobs back to pending so the queue
+// drainer picks them up again.
+export const retryFailedTranscodeJobs = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    const { error } = await supabase
+      .from("video_transcode_jobs")
+      .update({ status: "pending", error: null })
+      .eq("user_id", userId)
+      .eq("status", "failed");
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
