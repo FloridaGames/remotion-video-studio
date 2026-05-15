@@ -26,6 +26,10 @@ export type SceneBase = {
   durationFrames: number;
   accent: AccentKey;
   transitionAfter?: SceneTransition;
+  /** Track lane (1 = main V1, 2 = overlay V2). Defaults to 1. */
+  track?: number;
+  /** Absolute start frame on the track. Optional in single-mode (derived from order). */
+  startFrame?: number;
 };
 
 export type TitleScene = SceneBase & {
@@ -99,13 +103,57 @@ export type ProjectComposition = {
   fps: number;
   width: number;
   height: number;
+  mode?: ProjectMode;
 };
+
+export type ProjectMode = "single" | "multi";
 
 export const DEFAULT_FPS = 30;
 export const DEFAULT_WIDTH = 1920;
 export const DEFAULT_HEIGHT = 1080;
 
-export function totalDurationFrames(scenes: Scene[]): number {
+/**
+ * Fill in missing track/startFrame on scenes so the renderer + timeline can
+ * always assume they're present. In single mode, startFrame is rebuilt from
+ * array order with transition overlaps. In multi mode, missing values fall
+ * back to track 1 with sequential start frames.
+ */
+export function normalizeScenes(scenes: Scene[], mode: ProjectMode = "single"): Scene[] {
+  if (mode === "single") {
+    let acc = 0;
+    return scenes.map((s, i) => {
+      const dur = Math.max(1, s.durationFrames);
+      const start = acc;
+      acc += dur;
+      const t = s.transitionAfter;
+      if (t && i < scenes.length - 1) {
+        const next = Math.max(1, scenes[i + 1].durationFrames);
+        const maxOverlap = Math.max(0, Math.min(dur, next) - 1);
+        acc -= Math.max(0, Math.min(t.durationFrames, maxOverlap));
+      }
+      return { ...s, track: 1, startFrame: start } as Scene;
+    });
+  }
+  // multi: keep what's there, fill gaps deterministically
+  let acc = 0;
+  return scenes.map((s) => {
+    const track = s.track ?? 1;
+    const startFrame = s.startFrame ?? acc;
+    acc = Math.max(acc, startFrame + Math.max(1, s.durationFrames));
+    return { ...s, track, startFrame } as Scene;
+  });
+}
+
+export function totalDurationFrames(scenes: Scene[], mode: ProjectMode = "single"): number {
+  if (mode === "multi") {
+    let max = 0;
+    for (const s of scenes) {
+      const start = s.startFrame ?? 0;
+      const end = start + Math.max(1, s.durationFrames);
+      if (end > max) max = end;
+    }
+    return Math.max(1, max);
+  }
   let total = 0;
   for (let i = 0; i < scenes.length; i++) {
     total += Math.max(1, scenes[i].durationFrames);
