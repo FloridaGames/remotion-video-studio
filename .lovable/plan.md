@@ -35,14 +35,33 @@ Data model: unchanged. Still one ordered array of scenes.
 
 ## Phase 3 — Multi-track timeline (video / overlay / audio)
 
-Goal: stop forcing everything into one stack. Vyond/Premiere give you parallel lanes.
+Goal: optional parallel lanes (V1 / V2 to start). Single-track stays the default; users opt in to multi-track per project.
 
-- Schema change (migration): each scene gets `track: number` and `startFrame: number`. Duration stays. Order is derived from `startFrame`, not array index.
-- Tracks rendered top-to-bottom: **V2 overlay**, **V1 main**, **A1 voiceover**, **A2 music**.
-- Audio becomes per-clip instead of one global `audio_url`: an "Audio clip" scene type with waveform thumbnail (generated client-side via WebAudio `AudioBuffer`).
-- Render-time: Remotion composition iterates clips and places each via `<Sequence from={startFrame} durationInFrames={...}>`; overlapping tracks compose with z-index.
+### Decision: opt-in mode, single internal schema
 
-Migration risk: rewrite existing projects on load — map array order to sequential `startFrame`, all on `track: 1`.
+- Schema is **always** multi-track internally. Every scene carries `track: number` (default 1) and `startFrame: number`. No dual-state, no migrations on toggle.
+- Projects get `mode: 'single' | 'multi'` (default `'single'`). Mode is a UI constraint, not a data constraint.
+- **Single → Multi**: instant, no migration. Just unlocks the extra lane in the UI.
+- **Multi → Single**: allowed unconditionally; if any scene is on track ≠ 1 the user gets a confirm dialog ("This will remove N overlay clips"). After confirm: drop off-track scenes, recompact track 1 by sorting on `startFrame` and reassigning sequential start frames.
+- Going Multi → Single → Multi again: dropped clips are gone (destructive). Documented in the confirm copy.
+
+### Scope for this phase
+
+- Two video tracks: **V1 main** (default) and **V2 overlay**. Audio lanes deferred to a later iteration — `audio_url` on the project stays.
+- Multi-mode timeline: two stacked lanes. Drag clip horizontally to change `startFrame` (snap 0.5s), drag vertically between lanes to change `track`. Trim handle stays.
+- Single-mode timeline: unchanged from Phase 2 — `startFrame` is recomputed from array order on every edit so the user never sees it.
+- Render: `MainComposition` always iterates by `(track, startFrame)`. Single-mode just happens to have everything on track 1 with no gaps and uses `<TransitionSeries>` for transitions. Multi-mode renders each track as its own `<Series>` of `<Sequence from={startFrame}>` blocks; V2 stacks above V1 via z-index. Transitions only apply on track 1 in multi-mode (kept simple).
+
+### Technical changes
+
+1. Migration: `ALTER TABLE projects ADD COLUMN mode text NOT NULL DEFAULT 'single' CHECK (mode IN ('single','multi'))`.
+2. `src/remotion/types.ts`: add `track?: number` and `startFrame?: number` to `SceneBase`. Add helper `normalizeScenes(scenes, mode)` that fills missing track/startFrame for backward compat. Update `totalDurationFrames` to take mode into account.
+3. `src/remotion/MainComposition.tsx`: branch on mode. Single = current `<TransitionSeries>` path. Multi = group scenes by track, render `<Sequence from={startFrame} durationInFrames={dur}>` per clip, V2 (track 2) z-indexed above V1.
+4. `src/components/Timeline.tsx`: add `mode` prop. Multi-mode renders two lanes labelled V2 (top) and V1 (bottom). Drag updates `startFrame`; vertical drag changes `track`. Hide transition seam handles in multi mode (or show only on track 1).
+5. `src/routes/_authenticated/editor.$projectId.tsx`: load/save `mode`. Add a toggle in the header. On `multi → single`, run flatten with confirm. Pass `mode` to Timeline and MainComposition (via `composition`).
+6. Render worker compatibility: composition props now include `mode`. Update the worker's `Root.tsx` schema if it constrains props.
+
+Risk: existing projects have no `track`/`startFrame` on scenes — `normalizeScenes` patches them at load time and on every save, so the database catches up naturally without a data migration.
 
 ---
 
