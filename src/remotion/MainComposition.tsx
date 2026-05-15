@@ -1,5 +1,10 @@
-import { AbsoluteFill, Audio, Sequence } from "remotion";
-import type { ProjectComposition, Scene } from "./types";
+import { AbsoluteFill, Audio } from "remotion";
+import { TransitionSeries, linearTiming } from "@remotion/transitions";
+import { fade } from "@remotion/transitions/fade";
+import { slide } from "@remotion/transitions/slide";
+import { wipe } from "@remotion/transitions/wipe";
+import { flip } from "@remotion/transitions/flip";
+import type { ProjectComposition, Scene, TransitionKind } from "./types";
 import { TitleScene } from "./scenes/TitleScene";
 import { TalkingPointScene } from "./scenes/TalkingPointScene";
 import { ImageCaptionScene } from "./scenes/ImageCaptionScene";
@@ -30,19 +35,46 @@ function RenderScene({ scene }: { scene: Scene }) {
   }
 }
 
+function presentationFor(kind: TransitionKind) {
+  switch (kind) {
+    case "fade":
+      return fade();
+    case "slide":
+      return slide();
+    case "wipe":
+      return wipe();
+    case "flip":
+      return flip();
+  }
+}
+
 export function MainComposition({ scenes, audioUrl }: ProjectComposition) {
-  let cursor = 0;
   return (
     <AbsoluteFill style={{ backgroundColor: "#0b1a2e" }}>
-      {scenes.map((s) => {
-        const from = cursor;
-        cursor += Math.max(1, s.durationFrames);
-        return (
-          <Sequence key={s.id} from={from} durationInFrames={Math.max(1, s.durationFrames)}>
-            <RenderScene scene={s} />
-          </Sequence>
-        );
-      })}
+      <TransitionSeries>
+        {scenes.flatMap((s, i) => {
+          const dur = Math.max(1, s.durationFrames);
+          const items: React.ReactNode[] = [
+            <TransitionSeries.Sequence key={s.id} durationInFrames={dur}>
+              <RenderScene scene={s} />
+            </TransitionSeries.Sequence>,
+          ];
+          const t = s.transitionAfter;
+          if (t && i < scenes.length - 1) {
+            const next = Math.max(1, scenes[i + 1].durationFrames);
+            const maxOverlap = Math.max(1, Math.min(dur, next) - 1);
+            const tFrames = Math.max(1, Math.min(t.durationFrames, maxOverlap));
+            items.push(
+              <TransitionSeries.Transition
+                key={s.id + "-t"}
+                presentation={presentationFor(t.kind)}
+                timing={linearTiming({ durationInFrames: tFrames })}
+              />,
+            );
+          }
+          return items;
+        })}
+      </TransitionSeries>
       {audioUrl ? <Audio src={audioUrl} /> : null}
     </AbsoluteFill>
   );
