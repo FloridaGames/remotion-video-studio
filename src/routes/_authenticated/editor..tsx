@@ -986,11 +986,69 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-function VideoField({ url, onPick }: { url: string; onPick: (url: string) => void }) {
+function VideoField({
+  url,
+  onPick,
+}: {
+  url: string;
+  onPick: (url: string, durationFrames?: number) => void;
+}) {
   const isUpload = url.startsWith("upload://");
   const uploadPath = isUpload ? url.slice("upload://".length) : null;
   const signed = useSignedUrl("video-uploads", uploadPath);
   const previewUrl = isUpload ? signed : url;
+  const handlePick = useCallback(
+    async (newUrl: string) => {
+      if (!newUrl) {
+        onPick(newUrl);
+        return;
+      }
+      // Probe duration. For upload:// we need a signed URL first.
+      let probeUrl = newUrl;
+      if (newUrl.startsWith("upload://")) {
+        const path = newUrl.slice("upload://".length);
+        const { data } = await supabase.storage
+          .from("video-uploads")
+          .createSignedUrl(path, 60 * 10);
+        if (!data?.signedUrl) {
+          onPick(newUrl);
+          return;
+        }
+        probeUrl = data.signedUrl;
+      }
+      try {
+        const seconds = await new Promise<number>((resolve, reject) => {
+          const v = document.createElement("video");
+          v.preload = "metadata";
+          v.muted = true;
+          v.src = probeUrl;
+          const cleanup = () => {
+            v.removeAttribute("src");
+            v.load();
+          };
+          v.onloadedmetadata = () => {
+            const d = v.duration;
+            cleanup();
+            if (Number.isFinite(d) && d > 0) resolve(d);
+            else reject(new Error("invalid duration"));
+          };
+          v.onerror = () => {
+            cleanup();
+            reject(new Error("probe failed"));
+          };
+          setTimeout(() => {
+            cleanup();
+            reject(new Error("probe timeout"));
+          }, 8000);
+        });
+        const frames = Math.max(30, Math.round(seconds * FPS));
+        onPick(newUrl, frames);
+      } catch {
+        onPick(newUrl);
+      }
+    },
+    [onPick],
+  );
   return (
     <div className="space-y-1.5">
       <Label className="text-xs">Stock video</Label>
@@ -1015,7 +1073,7 @@ function VideoField({ url, onPick }: { url: string; onPick: (url: string) => voi
         )}
       </div>
       <div className="flex gap-2">
-        <StockVideoPicker currentUrl={url} onPick={onPick} />
+        <StockVideoPicker currentUrl={url} onPick={handlePick} />
         {url && (
           <Button variant="ghost" size="sm" type="button" onClick={() => onPick("")}>
             Clear
