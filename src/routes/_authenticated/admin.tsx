@@ -11,6 +11,7 @@ import {
   addOrgVideo,
   deleteOrgVideo,
   createOrgVideoUploadUrl,
+  suggestOrgVideoMetadata,
   type AdminUserRow,
 } from "@/lib/admin.functions";
 import { supabase } from "@/integrations/supabase/client";
@@ -34,7 +35,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Trash2, Lock, Eye, Upload, Gauge, Plus } from "lucide-react";
+import { Trash2, Lock, Eye, Upload, Gauge, Plus, Sparkles } from "lucide-react";
 
 const DEFAULT_RENDER_QUOTA = 100;
 
@@ -424,11 +425,13 @@ function AddOrgVideoDialog({
 }) {
   const createUrl = useServerFn(createOrgVideoUploadUrl);
   const add = useServerFn(addOrgVideo);
+  const suggest = useServerFn(suggestOrgVideoMetadata);
   const [title, setTitle] = useState("");
   const [tags, setTags] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState<string>("");
+  const [suggesting, setSuggesting] = useState(false);
 
   const tagList = useMemo(
     () =>
@@ -438,6 +441,74 @@ function AddOrgVideoDialog({
         .filter(Boolean),
     [tags],
   );
+
+  async function extractFirstFrame(f: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(f);
+      const video = document.createElement("video");
+      video.preload = "metadata";
+      video.muted = true;
+      video.playsInline = true;
+      video.crossOrigin = "anonymous";
+      video.src = url;
+      const cleanup = () => URL.revokeObjectURL(url);
+      const onError = () => {
+        cleanup();
+        reject(new Error("Could not read video"));
+      };
+      video.onerror = onError;
+      video.onloadedmetadata = () => {
+        // seek a bit in to skip black opening frame
+        video.currentTime = Math.min(1, (video.duration || 1) / 2);
+      };
+      video.onseeked = () => {
+        try {
+          const maxW = 640;
+          const scale = Math.min(1, maxW / (video.videoWidth || maxW));
+          const w = Math.max(1, Math.round((video.videoWidth || maxW) * scale));
+          const h = Math.max(1, Math.round((video.videoHeight || 360) * scale));
+          const canvas = document.createElement("canvas");
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) throw new Error("No 2D context");
+          ctx.drawImage(video, 0, 0, w, h);
+          const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
+          cleanup();
+          resolve(dataUrl);
+        } catch (e) {
+          cleanup();
+          reject(e instanceof Error ? e : new Error("Frame extraction failed"));
+        }
+      };
+    });
+  }
+
+  async function runSuggest(f: File) {
+    setSuggesting(true);
+    try {
+      const dataUrl = await extractFirstFrame(f);
+      const { title: t, tags: ts } = await suggest({
+        data: { filename: f.name, imageDataUrl: dataUrl },
+      });
+      if (t && !title.trim()) setTitle(t);
+      if (ts.length > 0 && !tags.trim()) setTags(ts.join(", "));
+      if (t || ts.length > 0) toast.success("Title and tags suggested");
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? `Auto-tag failed: ${e.message}` : "Auto-tag failed",
+      );
+    } finally {
+      setSuggesting(false);
+    }
+  }
+
+  function handleFileChange(f: File | null) {
+    setFile(f);
+    if (f && f.name.toLowerCase().endsWith(".mp4")) {
+      void runSuggest(f);
+    }
+  }
 
   async function handleUpload() {
     if (!file || !title.trim()) {
@@ -505,9 +576,15 @@ function AddOrgVideoDialog({
               id="file"
               type="file"
               accept=".mp4,video/mp4"
-              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              onChange={(e) => handleFileChange(e.target.files?.[0] ?? null)}
               className="mt-1"
             />
+            {suggesting && (
+              <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+                <Sparkles className="h-3 w-3 animate-pulse" />
+                Analyzing video to suggest title and tags…
+              </div>
+            )}
           </div>
           {progress && (
             <div className="text-sm text-muted-foreground">{progress}</div>
