@@ -75,14 +75,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "TU Explainer Studio — Build instructional videos" },
+      { title: "TiU Explainer Studio — Build instructional videos" },
       {
         name: "description",
         content:
           "Tilburg University tool for building short instructional explainer videos: pick templates, edit scenes, preview live, export MP4.",
       },
       { name: "author", content: "Tilburg University" },
-      { property: "og:title", content: "TU Explainer Studio" },
+      { property: "og:title", content: "TiU Explainer Studio — Build instructional videos" },
       {
         property: "og:description",
         content:
@@ -91,6 +91,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "TiU Explainer Studio — Build instructional videos" },
+      { name: "description", content: "Remotion Video Studio creates custom videos from templates and stock footage." },
+      { property: "og:description", content: "Remotion Video Studio creates custom videos from templates and stock footage." },
+      { name: "twitter:description", content: "Remotion Video Studio creates custom videos from templates and stock footage." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/45f6a208-c508-4ca2-a934-a70a5ca472ab/id-preview-7d1f390d--545c8da9-370a-416d-ae32-7cff63095344.lovable.app-1778829797030.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/45f6a208-c508-4ca2-a934-a70a5ca472ab/id-preview-7d1f390d--545c8da9-370a-416d-ae32-7cff63095344.lovable.app-1778829797030.png" },
     ],
     links: [
       {
