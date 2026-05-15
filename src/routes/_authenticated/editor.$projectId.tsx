@@ -40,7 +40,7 @@ import {
 import { StockVideoPicker } from "@/components/StockVideoPicker";
 import { Timeline } from "@/components/Timeline";
 
-export const Route = createFileRoute("/_authenticated/editor/")({
+export const Route = createFileRoute("/_authenticated/editor/$projectId")({
   component: EditorPage,
 });
 
