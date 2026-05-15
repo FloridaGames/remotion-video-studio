@@ -946,7 +946,7 @@ function Inspector({
         <Field label={`Duration: ${(scene.durationFrames / FPS).toFixed(1)}s`}>
           <Slider
             min={30}
-            max={600}
+            max={18000}
             step={15}
             value={[scene.durationFrames]}
             onValueChange={([v]) => onChange({ durationFrames: v })}
