@@ -35,7 +35,7 @@ function RenderScene({ scene }: { scene: Scene }) {
   }
 }
 
-function presentationFor(kind: TransitionKind) {
+function presentationFor(kind: TransitionKind): any {
   switch (kind) {
     case "fade":
       return fade();
