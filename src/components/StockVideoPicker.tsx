@@ -89,7 +89,7 @@ export function StockVideoPicker({
   async function refreshMyUploads() {
     setLoadingMy(true);
     try {
-      const { items } = await fetchMy({ data: undefined });
+      const { items } = await fetchMy();
       setMyUploads(items);
     } catch (e) {
       toast.error((e as Error).message);
@@ -101,7 +101,7 @@ export function StockVideoPicker({
   async function refreshOrg() {
     setLoadingOrg(true);
     try {
-      const { items } = await fetchOrg({ data: undefined });
+      const { items } = await fetchOrg();
       setOrgVideos(items);
     } catch (e) {
       toast.error((e as Error).message);
