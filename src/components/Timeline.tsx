@@ -1,7 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { MainComposition } from "@/remotion/MainComposition";
 import { Thumbnail } from "@remotion/player";
-import type { ProjectComposition, Scene, SceneTransition, TransitionKind } from "@/remotion/types";
+import type {
+  ProjectComposition,
+  ProjectMode,
+  Scene,
+  SceneTransition,
+  TransitionKind,
+} from "@/remotion/types";
 import {
   SCENE_TEMPLATE_LABEL,
   ACCENT_HEX,
@@ -20,15 +26,20 @@ type Props = {
   frame: number;
   selectedId: string | null;
   pxPerSecond?: number;
+  mode?: ProjectMode;
   onSelect: (id: string, startFrame: number) => void;
   onReorder: (fromIdx: number, toIdx: number) => void;
   onTrim: (id: string, durationFrames: number) => void;
   onSeek: (frame: number) => void;
   onTransitionChange: (id: string, transition: SceneTransition | undefined) => void;
+  /** Multi-mode only: change a scene's lane + start frame. */
+  onMoveClip?: (id: string, patch: { track: number; startFrame: number }) => void;
 };
 
 const SNAP_SECONDS = 0.5;
 const MIN_SECONDS = 0.5;
+const MULTI_TRACKS = [2, 1] as const; // top-to-bottom: V2 (overlay), V1 (main)
+const MULTI_LANE_HEIGHT = 64;
 
 export function Timeline({
   scenes,
@@ -39,15 +50,17 @@ export function Timeline({
   frame,
   selectedId,
   pxPerSecond = 80,
+  mode = "single",
   onSelect,
   onReorder,
   onTrim,
   onSeek,
   onTransitionChange,
+  onMoveClip,
 }: Props) {
   const trackRef = useRef<HTMLDivElement | null>(null);
 
-  const totalFrames = useMemo(() => totalDurationFrames(scenes), [scenes]);
+  const totalFrames = useMemo(() => totalDurationFrames(scenes, mode), [scenes, mode]);
   const totalSeconds = totalFrames / fps;
 
   const starts = useMemo(() => {
@@ -69,14 +82,18 @@ export function Timeline({
   }, [scenes]);
 
   const blocks = scenes.map((s, i) => {
-    const startSec = starts[i] / fps;
+    const startSec =
+      mode === "multi"
+        ? Math.max(0, s.startFrame ?? 0) / fps
+        : starts[i] / fps;
     const durSec = Math.max(1, s.durationFrames) / fps;
     return {
       scene: s,
       idx: i,
       left: startSec * pxPerSecond,
       width: durSec * pxPerSecond,
-      startFrame: starts[i],
+      startFrame: mode === "multi" ? Math.max(0, s.startFrame ?? 0) : starts[i],
+      track: s.track ?? 1,
     };
   });
 
@@ -109,6 +126,49 @@ export function Timeline({
   // ----- DRAG REORDER -----
   const [dragging, setDragging] = useState<{ idx: number; startX: number; dx: number } | null>(null);
   const dropTarget = useRef<number | null>(null);
+
+  // ----- MULTI-MODE: free position drag (h = startFrame, v = track) -----
+  const [posDrag, setPosDrag] = useState<{
+    id: string;
+    startX: number;
+    startY: number;
+    origStart: number;
+    origTrack: number;
+    dx: number;
+    dy: number;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!posDrag || mode !== "multi") return;
+    function onMove(e: MouseEvent) {
+      if (!posDrag) return;
+      setPosDrag({ ...posDrag, dx: e.clientX - posDrag.startX, dy: e.clientY - posDrag.startY });
+    }
+    function onUp() {
+      if (!posDrag || !onMoveClip) {
+        setPosDrag(null);
+        return;
+      }
+      const deltaSec = posDrag.dx / pxPerSecond;
+      const newSec = Math.max(0, posDrag.origStart / fps + deltaSec);
+      const snapped = Math.round(newSec / SNAP_SECONDS) * SNAP_SECONDS;
+      const newStart = Math.max(0, Math.round(snapped * fps));
+      // Vertical: pick lane by absolute y inside lanes container
+      const laneShift = Math.round(posDrag.dy / MULTI_LANE_HEIGHT);
+      // MULTI_TRACKS = [2,1]; index 0 is top lane (track 2), index 1 is bottom (track 1)
+      const origIdx = MULTI_TRACKS.indexOf(posDrag.origTrack as 1 | 2);
+      const newIdx = Math.max(0, Math.min(MULTI_TRACKS.length - 1, origIdx + laneShift));
+      const newTrack = MULTI_TRACKS[newIdx];
+      onMoveClip(posDrag.id, { track: newTrack, startFrame: newStart });
+      setPosDrag(null);
+    }
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, [posDrag, mode, pxPerSecond, fps, onMoveClip]);
 
   useEffect(() => {
     if (!dragging) return;
@@ -163,6 +223,130 @@ export function Timeline({
   // Ruler ticks every second
   const ticks: number[] = [];
   for (let s = 0; s <= Math.ceil(totalSeconds) + 5; s++) ticks.push(s);
+
+  // ----- MULTI-MODE rendering -----
+  if (mode === "multi") {
+    const lanesHeight = MULTI_TRACKS.length * MULTI_LANE_HEIGHT;
+    return (
+      <div className="rounded-xl border border-border bg-card p-3">
+        <div className="mb-2 flex items-center justify-between">
+          <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Timeline · Multi-track
+          </div>
+          <div className="text-[10px] text-muted-foreground">
+            Drag horizontally to reposition · Drag between lanes to change track · Drag right edge to trim
+          </div>
+        </div>
+        <div className="overflow-x-auto" ref={trackRef}>
+          <div className="relative" style={{ width: trackWidth }}>
+            <div
+              onClick={rulerSeek}
+              className="relative h-6 cursor-pointer border-b border-border bg-muted/30"
+            >
+              {ticks.map((t) => (
+                <div
+                  key={t}
+                  className="absolute top-0 bottom-0 border-l border-border/60 pl-1 text-[10px] text-muted-foreground"
+                  style={{ left: t * pxPerSecond }}
+                >
+                  {t}s
+                </div>
+              ))}
+            </div>
+            <div
+              className="relative bg-background/40"
+              style={{ height: lanesHeight }}
+            >
+              {/* Lane labels + dividers */}
+              {MULTI_TRACKS.map((tr, i) => (
+                <div
+                  key={tr}
+                  className="absolute left-0 right-0 border-b border-border/40"
+                  style={{
+                    top: i * MULTI_LANE_HEIGHT,
+                    height: MULTI_LANE_HEIGHT,
+                  }}
+                >
+                  <div className="absolute left-1 top-1 z-0 rounded bg-muted/60 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    {tr === 2 ? "V2 · Overlay" : "V1 · Main"}
+                  </div>
+                </div>
+              ))}
+
+              {/* Clips */}
+              {blocks.map((b) => {
+                const isSelected = b.scene.id === selectedId;
+                const isDragging = posDrag?.id === b.scene.id;
+                const dx = isDragging ? posDrag!.dx : 0;
+                const dy = isDragging ? posDrag!.dy : 0;
+                const laneIdx = MULTI_TRACKS.indexOf(b.track as 1 | 2);
+                const top = (laneIdx < 0 ? MULTI_TRACKS.length - 1 : laneIdx) * MULTI_LANE_HEIGHT + 4;
+                return (
+                  <div
+                    key={b.scene.id}
+                    className={`group absolute overflow-hidden rounded-md border-2 select-none ${
+                      isSelected ? "border-primary" : "border-border"
+                    } ${isDragging ? "z-20 opacity-80" : "z-10"}`}
+                    style={{
+                      left: b.left + dx,
+                      top: top + dy,
+                      width: Math.max(20, b.width),
+                      height: MULTI_LANE_HEIGHT - 8,
+                      background: ACCENT_HEX[b.scene.accent] + "44",
+                      cursor: isDragging ? "grabbing" : "grab",
+                    }}
+                    onMouseDown={(e) => {
+                      if ((e.target as HTMLElement).dataset.handle === "trim") return;
+                      onSelect(b.scene.id, b.startFrame);
+                      setPosDrag({
+                        id: b.scene.id,
+                        startX: e.clientX,
+                        startY: e.clientY,
+                        origStart: b.startFrame,
+                        origTrack: b.track,
+                        dx: 0,
+                        dy: 0,
+                      });
+                    }}
+                  >
+                    <div className="pointer-events-none relative flex h-full flex-col justify-between p-1.5">
+                      <div className="truncate text-[10px] font-semibold text-foreground drop-shadow">
+                        {b.idx + 1}. {SCENE_TEMPLATE_LABEL[b.scene.type]}
+                      </div>
+                      <div className="text-[10px] font-mono text-foreground/80 drop-shadow">
+                        {(b.scene.durationFrames / fps).toFixed(1)}s
+                      </div>
+                    </div>
+                    <div
+                      data-handle="trim"
+                      onMouseDown={(e) => {
+                        e.stopPropagation();
+                        setTrimming({
+                          id: b.scene.id,
+                          startX: e.clientX,
+                          startDur: b.scene.durationFrames,
+                        });
+                      }}
+                      className="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize bg-primary/50 opacity-0 group-hover:opacity-100 hover:opacity-100"
+                      title="Drag to trim duration"
+                    />
+                  </div>
+                );
+              })}
+
+              {/* Playhead */}
+              <div
+                className="pointer-events-none absolute top-0 bottom-0 z-30 w-px bg-primary"
+                style={{ left: playheadLeft }}
+              >
+                <div className="absolute -top-1 -left-[5px] h-2 w-[11px] rounded-sm bg-primary" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-xl border border-border bg-card p-3">

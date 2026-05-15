@@ -1,4 +1,4 @@
-import { AbsoluteFill, Audio } from "remotion";
+import { AbsoluteFill, Audio, Sequence } from "remotion";
 import { TransitionSeries, linearTiming } from "@remotion/transitions";
 import { fade } from "@remotion/transitions/fade";
 import { slide } from "@remotion/transitions/slide";
@@ -48,7 +48,38 @@ function presentationFor(kind: TransitionKind): any {
   }
 }
 
-export function MainComposition({ scenes, audioUrl }: ProjectComposition) {
+export function MainComposition({ scenes, audioUrl, mode }: ProjectComposition) {
+  if (mode === "multi") {
+    // Group by track. V1 (track=1) at z=1, V2 (track=2) at z=2, etc.
+    const tracks = new Map<number, Scene[]>();
+    for (const s of scenes) {
+      const t = s.track ?? 1;
+      if (!tracks.has(t)) tracks.set(t, []);
+      tracks.get(t)!.push(s);
+    }
+    const sortedTrackKeys = Array.from(tracks.keys()).sort((a, b) => a - b);
+    return (
+      <AbsoluteFill style={{ backgroundColor: "#0b1a2e" }}>
+        {sortedTrackKeys.map((track) => (
+          <AbsoluteFill key={track} style={{ zIndex: track }}>
+            {tracks.get(track)!.map((s) => (
+              <Sequence
+                key={s.id}
+                from={s.startFrame ?? 0}
+                durationInFrames={Math.max(1, s.durationFrames)}
+                layout="none"
+              >
+                <AbsoluteFill>
+                  <RenderScene scene={s} />
+                </AbsoluteFill>
+              </Sequence>
+            ))}
+          </AbsoluteFill>
+        ))}
+        {audioUrl ? <Audio src={audioUrl} /> : null}
+      </AbsoluteFill>
+    );
+  }
   return (
     <AbsoluteFill style={{ backgroundColor: "#0b1a2e" }}>
       <TransitionSeries>

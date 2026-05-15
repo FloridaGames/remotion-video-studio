@@ -14,6 +14,7 @@ const defaultProps: ProjectComposition = {
   fps: DEFAULT_FPS,
   width: DEFAULT_WIDTH,
   height: DEFAULT_HEIGHT,
+  mode: "single",
 };
 
 export const RemotionRoot = () => (
@@ -28,7 +29,7 @@ export const RemotionRoot = () => (
     calculateMetadata={({ props }) => {
       const p = props as ProjectComposition;
       return {
-        durationInFrames: Math.max(1, totalDurationFrames(p.scenes)),
+        durationInFrames: Math.max(1, totalDurationFrames(p.scenes, p.mode ?? "single")),
         fps: p.fps || DEFAULT_FPS,
         width: p.width || DEFAULT_WIDTH,
         height: p.height || DEFAULT_HEIGHT,
