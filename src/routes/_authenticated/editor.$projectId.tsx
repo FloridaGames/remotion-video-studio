@@ -3,8 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Player } from "@remotion/player";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/use-auth";
-import { uploadToBucket, useSignedUrl } from "@/lib/use-signed-url";
-import { useResolvedUploadUrls } from "@/lib/use-signed-url";
+import { uploadToBucket, useSignedUrl, useResolvedUploadUrls } from "@/lib/use-signed-url";
 import { MainComposition } from "@/remotion/MainComposition";
 import {
   ACCENT_HEX,
