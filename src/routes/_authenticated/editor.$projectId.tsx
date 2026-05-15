@@ -460,12 +460,27 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 function VideoField({ url, onPick }: { url: string; onPick: (url: string) => void }) {
+  const isUpload = url.startsWith("upload://");
+  const uploadPath = isUpload ? url.slice("upload://".length) : null;
+  const signed = useSignedUrl("video-uploads", uploadPath);
+  const previewUrl = isUpload ? signed : url;
   return (
     <div className="space-y-1.5">
       <Label>Stock video</Label>
       <div className="overflow-hidden rounded-md border border-border bg-black">
-        {url ? (
-          <video src={url} muted loop autoPlay playsInline className="aspect-video w-full object-cover" />
+        {url && previewUrl ? (
+          <video
+            src={previewUrl}
+            muted
+            loop
+            autoPlay
+            playsInline
+            className="aspect-video w-full object-cover"
+          />
+        ) : url && isUpload ? (
+          <div className="flex aspect-video items-center justify-center text-xs text-muted-foreground">
+            Loading preview…
+          </div>
         ) : (
           <div className="flex aspect-video items-center justify-center text-xs text-muted-foreground">
             No video selected
