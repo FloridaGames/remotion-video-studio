@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 const Input = z.object({ projectId: z.string().uuid() });
 
@@ -19,6 +20,35 @@ export const renderVideo = createServerFn({ method: "POST" })
     }
 
     const { supabase, userId } = context;
+
+    // Restriction checks: locked, read-only, monthly render quota.
+    const { data: restriction } = await supabaseAdmin
+      .from("user_restrictions")
+      .select("locked, read_only, monthly_render_limit")
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (restriction?.locked) {
+      return { ok: false as const, error: "Your account is locked. Contact your administrator." };
+    }
+    if (restriction?.read_only) {
+      return { ok: false as const, error: "Your account is read-only. Rendering is disabled." };
+    }
+    if (typeof restriction?.monthly_render_limit === "number") {
+      const monthStart = new Date();
+      monthStart.setDate(1);
+      monthStart.setHours(0, 0, 0, 0);
+      const { count } = await supabaseAdmin
+        .from("render_logs")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", userId)
+        .gte("created_at", monthStart.toISOString());
+      if ((count ?? 0) >= restriction.monthly_render_limit) {
+        return {
+          ok: false as const,
+          error: `Monthly render limit reached (${restriction.monthly_render_limit}). Try again next month.`,
+        };
+      }
+    }
 
     const { data: project, error } = await supabase
       .from("projects")
@@ -132,4 +162,5 @@ export const renderVideo = createServerFn({ method: "POST" })
       path: objectPath,
       sizeBytes: json.sizeBytes,
     };
+    // unreachable: see below; we now log before returning.
   });
