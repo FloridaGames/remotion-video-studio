@@ -20,6 +20,7 @@ import {
   listMyTranscodeJobs,
   deleteTranscodeJob,
   processNextTranscodeJob,
+  retryFailedTranscodeJobs,
   isTranscodeSourceExt,
   type TranscodeJob,
 } from "@/lib/transcode.functions";
@@ -81,6 +82,7 @@ export function StockVideoPicker({
   const fetchJobs = useServerFn(listMyTranscodeJobs);
   const deleteJob = useServerFn(deleteTranscodeJob);
   const processNext = useServerFn(processNextTranscodeJob);
+  const retryFailed = useServerFn(retryFailedTranscodeJobs);
 
   const libraryItems: Item[] = CURATED_STOCK_VIDEOS.map((v: StockVideo) => ({
     id: v.id,
@@ -232,6 +234,12 @@ export function StockVideoPicker({
     if (draining) return;
     setDraining(true);
     try {
+      // If there are failed jobs, reset them to pending first so a single
+      // click also retries them.
+      if (transcodeJobs.some((j) => j.status === "failed")) {
+        await retryFailed();
+        await refreshJobs();
+      }
       // Drain pending jobs sequentially. Each call processes one job
       // and returns; we refetch the list in between so the UI updates.
       while (true) {
