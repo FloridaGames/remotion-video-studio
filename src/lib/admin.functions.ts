@@ -249,3 +249,76 @@ export const createOrgVideoUploadUrl = createServerFn({ method: "POST" })
     if (error || !signed) throw new Error(error?.message ?? "Could not create upload URL");
     return { path, token: signed.token };
   });
+
+const SuggestMetadataInput = z.object({
+  filename: z.string().min(1).max(200),
+  imageDataUrl: z
+    .string()
+    .min(1)
+    .max(8_000_000)
+    .regex(/^data:image\/(png|jpeg|jpg|webp);base64,/, "Expected an image data URL"),
+});
+
+export const suggestOrgVideoMetadata = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => SuggestMetadataInput.parse(input))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.userId);
+    const apiKey = process.env.LOVABLE_API_KEY;
+    if (!apiKey) throw new Error("LOVABLE_API_KEY not configured");
+
+    const prompt = `You are tagging a stock video clip for a Tilburg University shared library used in explainer videos. Based on the still frame and the original filename "${data.filename}", produce:
+- a short, descriptive, human-friendly title (max 6 words, Title Case, no file extension, no quotes)
+- 3 to 6 lowercase tags describing subject, setting, mood, and visual style (single words or short hyphenated terms; no '#').
+Return ONLY compact JSON: {"title": "...", "tags": ["...", "..."]}`;
+
+    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        messages: [
+          {
+            role: "user",
+            content: [
+              { type: "text", text: prompt },
+              { type: "image_url", image_url: { url: data.imageDataUrl } },
+            ],
+          },
+        ],
+        response_format: { type: "json_object" },
+      }),
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      throw new Error(`AI request failed (${res.status}): ${text.slice(0, 200)}`);
+    }
+    const json = await res.json();
+    const content: string = json?.choices?.[0]?.message?.content ?? "";
+    let parsed: { title?: unknown; tags?: unknown } = {};
+    try {
+      parsed = JSON.parse(content);
+    } catch {
+      const match = content.match(/\{[\s\S]*\}/);
+      if (match) {
+        try {
+          parsed = JSON.parse(match[0]);
+        } catch {
+          /* ignore */
+        }
+      }
+    }
+    const title =
+      typeof parsed.title === "string" ? parsed.title.trim().slice(0, 120) : "";
+    const tags = Array.isArray(parsed.tags)
+      ? parsed.tags
+          .filter((t): t is string => typeof t === "string")
+          .map((t) => t.trim().toLowerCase().replace(/^#/, ""))
+          .filter((t) => t.length > 0 && t.length <= 40)
+          .slice(0, 8)
+      : [];
+    return { title, tags };
+  });
