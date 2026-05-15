@@ -11,8 +11,10 @@ import {
   type Scene,
   SCENE_TEMPLATE_LABEL,
   type SceneType,
+  type ProjectMode,
   makeScene,
   totalDurationFrames,
+  normalizeScenes,
 } from "@/remotion/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -67,6 +69,7 @@ function EditorPage() {
   const [title, setTitle] = useState("Untitled video");
   const [scenes, setScenes] = useState<Scene[]>([]);
   const [audioPath, setAudioPath] = useState<string | null>(null);
+  const [mode, setMode] = useState<ProjectMode>("single");
   const [fps] = useState(FPS);
   const [width] = useState(1920);
   const [height] = useState(1080);
@@ -99,7 +102,7 @@ function EditorPage() {
     (async () => {
       const { data, error } = await supabase
         .from("projects")
-        .select("title, scenes, audio_url")
+        .select("title, scenes, audio_url, mode")
         .eq("id", projectId)
         .single();
       if (error || !data) {
@@ -107,8 +110,11 @@ function EditorPage() {
         navigate({ to: "/projects" });
         return;
       }
-      const loaded = (data.scenes as unknown as Scene[]) ?? [];
+      const loadedMode = ((data as { mode?: ProjectMode }).mode ?? "single") as ProjectMode;
+      const raw = (data.scenes as unknown as Scene[]) ?? [];
+      const loaded = normalizeScenes(raw, loadedMode);
       setTitle(data.title);
+      setMode(loadedMode);
       setScenes(loaded);
       setAudioPath(data.audio_url);
       setSelectedId(loaded[0]?.id ?? null);
@@ -144,13 +150,15 @@ function EditorPage() {
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(async () => {
       setSaving(true);
+      const normalized = normalizeScenes(scenes, mode);
       const { error } = await supabase
         .from("projects")
         .update({
           title,
-          scenes: scenes as unknown as never,
+          scenes: normalized as unknown as never,
           audio_url: audioPath,
-          duration_frames: totalDurationFrames(scenes),
+          duration_frames: totalDurationFrames(normalized, mode),
+          mode,
         })
         .eq("id", projectId);
       setSaving(false);
@@ -159,7 +167,7 @@ function EditorPage() {
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
     };
-  }, [title, scenes, audioPath, projectId, loading]);
+  }, [title, scenes, audioPath, projectId, loading, mode]);
 
   const uploadSentinels = useMemo(
     () =>
@@ -181,10 +189,10 @@ function EditorPage() {
     [scenes, resolvedUploads],
   );
   const composition = useMemo(
-    () => ({ scenes: resolvedScenes, audioUrl, fps, width, height }),
-    [resolvedScenes, audioUrl, fps, width, height],
+    () => ({ scenes: normalizeScenes(resolvedScenes, mode), audioUrl, fps, width, height, mode }),
+    [resolvedScenes, audioUrl, fps, width, height, mode],
   );
-  const durationInFrames = Math.max(1, totalDurationFrames(scenes));
+  const durationInFrames = Math.max(1, totalDurationFrames(scenes, mode));
   const selected = scenes.find((s) => s.id === selectedId) ?? null;
 
   // Cumulative scene start frames (for thumbnails + click-to-seek)
@@ -272,6 +280,48 @@ function EditorPage() {
       return copy;
     });
   }, []);
+
+  const moveClip = useCallback(
+    (id: string, patch: { track: number; startFrame: number }) => {
+      setScenes((prev) =>
+        prev.map((s) =>
+          s.id === id
+            ? ({ ...s, track: patch.track, startFrame: Math.max(0, patch.startFrame) } as Scene)
+            : s,
+        ),
+      );
+    },
+    [],
+  );
+
+  // Mode toggle: single → multi is free; multi → single may drop overlay clips.
+  const toggleMode = useCallback(() => {
+    if (mode === "single") {
+      // Promote: assign explicit track=1 + sequential startFrames.
+      setScenes((prev) => normalizeScenes(prev, "single"));
+      setMode("multi");
+      toast.success("Multi-track enabled · V2 overlay lane unlocked");
+      return;
+    }
+    // multi → single
+    const offTrack = scenes.filter((s) => (s.track ?? 1) !== 1);
+    if (offTrack.length > 0) {
+      const ok = window.confirm(
+        `Switch to single-track?\n\nThis will permanently remove ${offTrack.length} clip${
+          offTrack.length === 1 ? "" : "s"
+        } on the V2 overlay lane. Re-enabling multi-track later won't bring them back.`,
+      );
+      if (!ok) return;
+    }
+    setScenes((prev) => {
+      const onMain = prev
+        .filter((s) => (s.track ?? 1) === 1)
+        .sort((a, b) => (a.startFrame ?? 0) - (b.startFrame ?? 0));
+      return normalizeScenes(onMain, "single");
+    });
+    setMode("single");
+    toast.success("Switched to single-track");
+  }, [mode, scenes]);
 
   // Undo / redo
   const canUndo = history.current.length > 1;
@@ -761,6 +811,7 @@ function EditorPage() {
             height={height}
             frame={frame}
             selectedId={selectedId}
+            mode={mode}
             onSelect={(id, startFrame) => {
               setSelectedId(id);
               seekToFrame(startFrame);
@@ -771,6 +822,7 @@ function EditorPage() {
             onTransitionChange={(id, transitionAfter) =>
               updateScene(id, { transitionAfter } as any)
             }
+            onMoveClip={moveClip}
           />
         )}
         {viewMode === "timeline" && (
