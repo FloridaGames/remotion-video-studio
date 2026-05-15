@@ -38,6 +38,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { StockVideoPicker } from "@/components/StockVideoPicker";
+import { Timeline } from "@/components/Timeline";
 
 export const Route = createFileRoute("/_authenticated/editor/")({
   component: EditorPage,
@@ -89,6 +90,7 @@ function EditorPage() {
   const [loop, setLoop] = useState(true);
   const [zoom, setZoom] = useState<(typeof ZOOM_OPTIONS)[number]["value"]>("fit");
   const [showSafe, setShowSafe] = useState(false);
+  const [viewMode, setViewMode] = useState<"timeline" | "storyboard">("timeline");
 
   const audioUrl = useSignedUrl("video-audio", audioPath);
 
@@ -257,6 +259,16 @@ function EditorPage() {
       if (target < 0 || target >= prev.length) return prev;
       const copy = prev.slice();
       [copy[idx], copy[target]] = [copy[target], copy[idx]];
+      return copy;
+    });
+  }, []);
+  const reorderTo = useCallback((from: number, to: number) => {
+    setScenes((prev) => {
+      if (from === to || from < 0 || from >= prev.length) return prev;
+      const copy = prev.slice();
+      const [item] = copy.splice(from, 1);
+      const insertAt = Math.max(0, Math.min(copy.length, to));
+      copy.splice(insertAt, 0, item);
       return copy;
     });
   }, []);
@@ -453,6 +465,24 @@ function EditorPage() {
           >
             <Redo2 className="h-4 w-4" />
           </Button>
+          <div className="ml-2 flex rounded-md border border-border p-0.5">
+            <button
+              onClick={() => setViewMode("timeline")}
+              className={`rounded px-2 py-1 text-xs ${
+                viewMode === "timeline" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Timeline
+            </button>
+            <button
+              onClick={() => setViewMode("storyboard")}
+              className={`rounded px-2 py-1 text-xs ${
+                viewMode === "storyboard" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Storyboard
+            </button>
+          </div>
           <span className="px-1 text-xs">{saving ? "Saving…" : "Saved"}</span>
           <label className="cursor-pointer rounded-md border border-border bg-card px-3 py-1.5 text-foreground hover:border-primary">
             {audioPath ? "Replace audio" : "Upload audio"}
@@ -471,8 +501,15 @@ function EditorPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[280px_1fr_340px]">
-        {/* Scene list with thumbnails */}
+      <div
+        className={`grid gap-4 ${
+          viewMode === "storyboard"
+            ? "lg:grid-cols-[280px_1fr_340px]"
+            : "lg:grid-cols-[1fr_340px]"
+        }`}
+      >
+        {/* Scene list with thumbnails (storyboard mode only) */}
+        {viewMode === "storyboard" && (
         <aside className="rounded-xl border border-border bg-card p-3">
           <div className="mb-2 px-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Scenes
@@ -555,9 +592,11 @@ function EditorPage() {
             ))}
           </div>
         </aside>
+        )}
 
         {/* Player + transport */}
-        <section className="flex flex-col gap-3 rounded-xl border border-border bg-card p-3">
+        <section className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-3">
           {/* Toolbar above player */}
           <div className="flex items-center justify-between gap-2 text-xs">
             <div className="flex items-center gap-2">
@@ -712,6 +751,43 @@ function EditorPage() {
               </p>
             </div>
           )}
+        </div>
+        {viewMode === "timeline" && scenes.length > 0 && (
+          <Timeline
+            scenes={scenes}
+            composition={composition}
+            fps={fps}
+            width={width}
+            height={height}
+            frame={frame}
+            selectedId={selectedId}
+            onSelect={(id, startFrame) => {
+              setSelectedId(id);
+              seekToFrame(startFrame);
+            }}
+            onReorder={reorderTo}
+            onTrim={(id, durationFrames) => updateScene(id, { durationFrames })}
+            onSeek={seekToFrame}
+          />
+        )}
+        {viewMode === "timeline" && (
+          <div className="rounded-xl border border-border bg-card p-3">
+            <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Add scene
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {(Object.keys(SCENE_TEMPLATE_LABEL) as SceneType[]).map((t) => (
+                <button
+                  key={t}
+                  onClick={() => addScene(t)}
+                  className="flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs hover:border-primary hover:bg-muted"
+                >
+                  <Plus className="h-3 w-3" /> {SCENE_TEMPLATE_LABEL[t]}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         </section>
 
         {/* Inspector */}
