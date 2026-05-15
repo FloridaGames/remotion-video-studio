@@ -533,6 +533,21 @@ function EditorPage() {
               Storyboard
             </button>
           </div>
+          <button
+            onClick={toggleMode}
+            className={`ml-1 rounded-md border px-2 py-1 text-xs ${
+              mode === "multi"
+                ? "border-primary bg-primary/10 text-primary"
+                : "border-border text-muted-foreground hover:border-primary"
+            }`}
+            title={
+              mode === "multi"
+                ? "Switch back to single-track (may drop overlay clips)"
+                : "Enable multi-track (adds V2 overlay lane)"
+            }
+          >
+            {mode === "multi" ? "Multi-track" : "Single-track"}
+          </button>
           <span className="px-1 text-xs">{saving ? "Saving…" : "Saved"}</span>
           <label className="cursor-pointer rounded-md border border-border bg-card px-3 py-1.5 text-foreground hover:border-primary">
             {audioPath ? "Replace audio" : "Upload audio"}
