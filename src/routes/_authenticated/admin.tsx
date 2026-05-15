@@ -11,7 +11,6 @@ import {
   addOrgVideo,
   deleteOrgVideo,
   createOrgVideoUploadUrl,
-  DEFAULT_RENDER_QUOTA,
   type AdminUserRow,
 } from "@/lib/admin.functions";
 import { supabase } from "@/integrations/supabase/client";
@@ -36,6 +35,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Trash2, Lock, Eye, Upload, Gauge, Plus } from "lucide-react";
+
+const DEFAULT_RENDER_QUOTA = 100;
 
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({ meta: [{ title: "Admin — TU Explainer Studio" }] }),
