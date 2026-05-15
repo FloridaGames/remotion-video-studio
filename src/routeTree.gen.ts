@@ -19,7 +19,6 @@ import { Route as AuthenticatedProjectsRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedExportProjectIdRouteImport } from './routes/_authenticated/export.$projectId'
 import { Route as AuthenticatedEditorProjectIdRouteImport } from './routes/_authenticated/editor.$projectId'
-import { Route as AuthenticatedEditorRouteImport } from './routes/_authenticated/editor.'
 
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
@@ -72,11 +71,6 @@ const AuthenticatedEditorProjectIdRoute =
     path: '/editor/$projectId',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
-const AuthenticatedEditorRoute = AuthenticatedEditorRouteImport.update({
-  id: '/editor/',
-  path: '/editor/',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -86,7 +80,6 @@ export interface FileRoutesByFullPath {
   '/signup': typeof SignupRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/projects': typeof AuthenticatedProjectsRoute
-  '/editor/': typeof AuthenticatedEditorRoute
   '/editor/$projectId': typeof AuthenticatedEditorProjectIdRoute
   '/export/$projectId': typeof AuthenticatedExportProjectIdRoute
 }
@@ -98,7 +91,6 @@ export interface FileRoutesByTo {
   '/signup': typeof SignupRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/projects': typeof AuthenticatedProjectsRoute
-  '/editor': typeof AuthenticatedEditorRoute
   '/editor/$projectId': typeof AuthenticatedEditorProjectIdRoute
   '/export/$projectId': typeof AuthenticatedExportProjectIdRoute
 }
@@ -112,7 +104,6 @@ export interface FileRoutesById {
   '/signup': typeof SignupRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/projects': typeof AuthenticatedProjectsRoute
-  '/_authenticated/editor/': typeof AuthenticatedEditorRoute
   '/_authenticated/editor/$projectId': typeof AuthenticatedEditorProjectIdRoute
   '/_authenticated/export/$projectId': typeof AuthenticatedExportProjectIdRoute
 }
@@ -126,7 +117,6 @@ export interface FileRouteTypes {
     | '/signup'
     | '/admin'
     | '/projects'
-    | '/editor/'
     | '/editor/$projectId'
     | '/export/$projectId'
   fileRoutesByTo: FileRoutesByTo
@@ -138,7 +128,6 @@ export interface FileRouteTypes {
     | '/signup'
     | '/admin'
     | '/projects'
-    | '/editor'
     | '/editor/$projectId'
     | '/export/$projectId'
   id:
@@ -151,7 +140,6 @@ export interface FileRouteTypes {
     | '/signup'
     | '/_authenticated/admin'
     | '/_authenticated/projects'
-    | '/_authenticated/editor/'
     | '/_authenticated/editor/$projectId'
     | '/_authenticated/export/$projectId'
   fileRoutesById: FileRoutesById
@@ -237,20 +225,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedEditorProjectIdRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/editor/': {
-      id: '/_authenticated/editor/'
-      path: '/editor'
-      fullPath: '/editor/'
-      preLoaderRoute: typeof AuthenticatedEditorRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
   }
 }
 
 interface AuthenticatedRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
   AuthenticatedProjectsRoute: typeof AuthenticatedProjectsRoute
-  AuthenticatedEditorRoute: typeof AuthenticatedEditorRoute
   AuthenticatedEditorProjectIdRoute: typeof AuthenticatedEditorProjectIdRoute
   AuthenticatedExportProjectIdRoute: typeof AuthenticatedExportProjectIdRoute
 }
@@ -258,7 +238,6 @@ interface AuthenticatedRouteChildren {
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRoute,
   AuthenticatedProjectsRoute: AuthenticatedProjectsRoute,
-  AuthenticatedEditorRoute: AuthenticatedEditorRoute,
   AuthenticatedEditorProjectIdRoute: AuthenticatedEditorProjectIdRoute,
   AuthenticatedExportProjectIdRoute: AuthenticatedExportProjectIdRoute,
 }
@@ -278,3 +257,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
