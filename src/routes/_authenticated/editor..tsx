@@ -839,7 +839,12 @@ function Inspector({
         )}
         {scene.type === "cinematic-title" && (
           <>
-            <VideoField url={scene.videoUrl} onPick={(videoUrl) => onChange({ videoUrl })} />
+            <VideoField
+              url={scene.videoUrl}
+              onPick={(videoUrl, durationFrames) =>
+                onChange(durationFrames ? { videoUrl, durationFrames } : { videoUrl })
+              }
+            />
             <Field label="Title">
               <Input value={scene.title} onChange={(e) => onChange({ title: e.target.value })} />
             </Field>
@@ -853,7 +858,12 @@ function Inspector({
         )}
         {scene.type === "split-video" && (
           <>
-            <VideoField url={scene.videoUrl} onPick={(videoUrl) => onChange({ videoUrl })} />
+            <VideoField
+              url={scene.videoUrl}
+              onPick={(videoUrl, durationFrames) =>
+                onChange(durationFrames ? { videoUrl, durationFrames } : { videoUrl })
+              }
+            />
             <Field label="Heading">
               <Input
                 value={scene.heading}
@@ -871,7 +881,12 @@ function Inspector({
         )}
         {scene.type === "lower-third" && (
           <>
-            <VideoField url={scene.videoUrl} onPick={(videoUrl) => onChange({ videoUrl })} />
+            <VideoField
+              url={scene.videoUrl}
+              onPick={(videoUrl, durationFrames) =>
+                onChange(durationFrames ? { videoUrl, durationFrames } : { videoUrl })
+              }
+            />
             <Field label="Name">
               <Input value={scene.name} onChange={(e) => onChange({ name: e.target.value })} />
             </Field>
@@ -886,7 +901,12 @@ function Inspector({
         )}
         {scene.type === "quote-video" && (
           <>
-            <VideoField url={scene.videoUrl} onPick={(videoUrl) => onChange({ videoUrl })} />
+            <VideoField
+              url={scene.videoUrl}
+              onPick={(videoUrl, durationFrames) =>
+                onChange(durationFrames ? { videoUrl, durationFrames } : { videoUrl })
+              }
+            />
             <Field label="Quote">
               <Textarea
                 rows={4}
