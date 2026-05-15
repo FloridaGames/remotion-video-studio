@@ -7,10 +7,25 @@ export const ACCENT_HEX: Record<AccentKey, string> = {
   ocean: "#008ec6",
 };
 
+export type TransitionKind = "fade" | "slide" | "wipe" | "flip";
+
+export type SceneTransition = {
+  kind: TransitionKind;
+  durationFrames: number;
+};
+
+export const TRANSITION_LABEL: Record<TransitionKind, string> = {
+  fade: "Fade",
+  slide: "Slide",
+  wipe: "Wipe",
+  flip: "Flip",
+};
+
 export type SceneBase = {
   id: string;
   durationFrames: number;
   accent: AccentKey;
+  transitionAfter?: SceneTransition;
 };
 
 export type TitleScene = SceneBase & {
@@ -91,7 +106,18 @@ export const DEFAULT_WIDTH = 1920;
 export const DEFAULT_HEIGHT = 1080;
 
 export function totalDurationFrames(scenes: Scene[]): number {
-  const total = scenes.reduce((acc, s) => acc + Math.max(1, s.durationFrames), 0);
+  let total = 0;
+  for (let i = 0; i < scenes.length; i++) {
+    total += Math.max(1, scenes[i].durationFrames);
+    // Transitions overlap the next scene, so subtract the overlap.
+    const t = scenes[i].transitionAfter;
+    if (t && i < scenes.length - 1) {
+      const next = Math.max(1, scenes[i + 1].durationFrames);
+      const cur = Math.max(1, scenes[i].durationFrames);
+      const maxOverlap = Math.max(0, Math.min(cur, next) - 1);
+      total -= Math.max(0, Math.min(t.durationFrames, maxOverlap));
+    }
+  }
   return Math.max(1, total);
 }
 
