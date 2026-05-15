@@ -652,7 +652,7 @@ function TranscodeQueuePanel({
       </ul>
       {failed > 0 && (
         <p className="mt-2 text-[11px] text-muted-foreground">
-          Hover a failed row to see the error. Click <Play className="inline h-3 w-3" /> to retry — failed jobs aren&apos;t auto-restarted.
+          Hover a failed row to see the error. Clicking Start transcoding will retry failed jobs.
         </p>
       )}
     </div>
