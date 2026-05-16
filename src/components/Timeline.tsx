@@ -197,11 +197,24 @@ export function Timeline({
     return arr;
   }, [scenes]);
 
+  // Visual-only layout for single-track: lay clips end-to-end (no overlap),
+  // so the transition is shown as a ramp underneath the track instead of as
+  // a tint on the previous clip.
+  const displayStarts = useMemo(() => {
+    const arr: number[] = [];
+    let acc = 0;
+    for (let i = 0; i < scenes.length; i++) {
+      arr.push(acc);
+      acc += Math.max(1, scenes[i].durationFrames);
+    }
+    return arr;
+  }, [scenes]);
+
   const blocks = scenes.map((s, i) => {
     const startSec =
       mode === "multi"
         ? Math.max(0, s.startFrame ?? 0) / fps
-        : starts[i] / fps;
+        : (mode === "single" ? displayStarts[i] : starts[i]) / fps;
     const durSec = Math.max(1, s.durationFrames) / fps;
     return {
       scene: s,
