@@ -598,7 +598,8 @@ export function Timeline({
           <div className="relative h-6 border-t border-border/40 bg-muted/20">
             {blocks.slice(0, -1).map((b) => {
               const t = b.scene.transitionAfter;
-              const seamLeft = b.left + b.width;
+              const ownerDx = dragging?.idx === b.idx ? dragging.dx : 0;
+              const seamLeft = b.left + b.width + ownerDx;
               // Ramp width: visual representation of overlap duration.
               const rampPx = t ? (t.durationFrames / fps) * pxPerSecond : 0;
               return (
