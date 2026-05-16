@@ -82,7 +82,17 @@ export function MainComposition({ scenes, audioUrl, mode }: ProjectComposition) 
             const nextDur = Math.max(1, next.durationFrames);
             const gap = nextStart - (curStart + dur);
             const t = s.transitionAfter;
-            if (t && gap <= 0) {
+            if (gap > 0) {
+              items.push(
+                <TransitionSeries.Sequence
+                  key={s.id + "-gap"}
+                  durationInFrames={gap}
+                >
+                  <AbsoluteFill />
+                </TransitionSeries.Sequence>,
+              );
+            }
+            if (t) {
               const maxOverlap = Math.max(1, Math.min(dur, nextDur) - 1);
               const tFrames = Math.max(1, Math.min(t.durationFrames, maxOverlap));
               items.push(
@@ -91,15 +101,6 @@ export function MainComposition({ scenes, audioUrl, mode }: ProjectComposition) 
                   presentation={presentationFor(t.kind)}
                   timing={linearTiming({ durationInFrames: tFrames })}
                 />,
-              );
-            } else if (gap > 0) {
-              items.push(
-                <TransitionSeries.Sequence
-                  key={s.id + "-gap"}
-                  durationInFrames={gap}
-                >
-                  <AbsoluteFill />
-                </TransitionSeries.Sequence>,
               );
             }
           }
