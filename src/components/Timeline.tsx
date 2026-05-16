@@ -527,9 +527,9 @@ export function Timeline({
               return (
                 <div
                   key={b.scene.id}
-                  className={`group absolute top-1 bottom-1 overflow-hidden rounded-md border-2 select-none ${
+                  className={`group absolute top-1 bottom-1 rounded-md border-2 select-none ${
                     isSelected ? "border-primary" : "border-border"
-                  } ${isDragging ? "opacity-70 z-20" : "z-10"}`}
+                  } ${isDragging ? "opacity-70 z-20" : isSelected ? "z-20" : "z-10 hover:z-20"}`}
                   style={{
                     left: b.left + dx,
                     width: Math.max(20, b.width),
@@ -542,7 +542,7 @@ export function Timeline({
                     onSelect(b.scene.id, b.startFrame);
                   }}
                 >
-                  <div className="pointer-events-none absolute inset-0">
+                  <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-md">
                     <Thumbnail
                       component={MainComposition}
                       inputProps={composition}
@@ -582,7 +582,7 @@ export function Timeline({
                         startDur: b.scene.durationFrames,
                       });
                     }}
-                    className="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize bg-primary/50 opacity-0 group-hover:opacity-100 hover:opacity-100"
+                    className="absolute -right-1 top-0 bottom-0 z-40 w-3 cursor-ew-resize rounded-sm bg-primary/70 opacity-0 group-hover:opacity-100 hover:opacity-100"
                     title="Drag to trim duration"
                   />
                 </div>

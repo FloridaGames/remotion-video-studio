@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Plus, Trash2 } from "lucide-react";
 import { makeScene, totalDurationFrames, DEFAULT_FPS, DEFAULT_WIDTH, DEFAULT_HEIGHT } from "@/remotion/types";
+import type { Scene, SceneType } from "@/remotion/types";
+import { CURATED_STOCK_VIDEOS } from "@/lib/stock-videos";
 
 type ProjectRow = {
   id: string;
@@ -19,6 +21,51 @@ export const Route = createFileRoute("/_authenticated/projects")({
   head: () => ({ meta: [{ title: "My videos — TU Explainer Studio" }] }),
   component: ProjectsPage,
 });
+
+function pick<T>(arr: readonly T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function buildRandomDefaultScenes(): Scene[] {
+  // Always start with a title card.
+  const title = makeScene("title");
+
+  // Always one video-only with a curated stock video.
+  const videoOnly = makeScene("video-only");
+  if (videoOnly.type === "video-only") {
+    videoOnly.videoUrl = pick(CURATED_STOCK_VIDEOS).url;
+  }
+
+  // Fill 1–2 more random scenes from the rest of the catalog.
+  const otherTypes: SceneType[] = [
+    "talking-point",
+    "image-caption",
+    "outro",
+    "cinematic-title",
+    "split-video",
+    "lower-third",
+    "quote-video",
+  ];
+  const extraCount = 1 + Math.floor(Math.random() * 2); // 1 or 2 → total 3 or 4
+  const extras: Scene[] = [];
+  for (let i = 0; i < extraCount; i++) {
+    const s = makeScene(pick(otherTypes));
+    // Give video-based scenes a curated clip too, so previews aren't empty.
+    if ("videoUrl" in s && !s.videoUrl) {
+      (s as { videoUrl: string }).videoUrl = pick(CURATED_STOCK_VIDEOS).url;
+    }
+    extras.push(s);
+  }
+
+  // Insert the video-only somewhere after the title (not last if outro picked).
+  const middle = [videoOnly, ...extras];
+  // Shuffle the middle so video-only isn't always at index 1.
+  for (let i = middle.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [middle[i], middle[j]] = [middle[j], middle[i]];
+  }
+  return [title, ...middle];
+}
 
 function ProjectsPage() {
   const { user } = useAuth();
@@ -42,7 +89,7 @@ function ProjectsPage() {
 
   async function createProject() {
     if (!user) return;
-    const scenes = [makeScene("video-only"), makeScene("video-only")];
+    const scenes = buildRandomDefaultScenes();
     const { data, error } = await supabase
       .from("projects")
       .insert({
