@@ -607,17 +607,25 @@ export function Timeline({
                     <svg
                       className="pointer-events-none absolute top-0 z-0"
                       style={{
-                        left: seamLeft - rampPx / 2,
-                        width: rampPx,
+                        // Anchor the ramp to the OWNER clip (left side of the
+                        // seam). The flat edge sits under the owner; the tip
+                        // points into the next clip. This makes it obvious
+                        // which clip the transition belongs to.
+                        left: seamLeft - rampPx,
+                        width: rampPx * 2,
                         height: 24,
                       }}
-                      viewBox={`0 0 ${rampPx} 24`}
+                      viewBox={`0 0 ${rampPx * 2} 24`}
                       preserveAspectRatio="none"
                       aria-hidden
                     >
                       <title>{`${TRANSITION_LABEL[t.kind]} ${(t.durationFrames / fps).toFixed(2)}s`}</title>
+                      {/* Right triangle: flat top sits under the owner clip
+                          (from 0 to seam at rampPx), tip extends rampPx into
+                          the next clip. Vertical edge marks the owner's
+                          trailing boundary. */}
                       <polygon
-                        points={`0,2 ${rampPx},2 ${rampPx / 2},18`}
+                        points={`0,2 ${rampPx},2 ${rampPx},18 ${rampPx * 2},2`}
                         fill="color-mix(in oklab, var(--primary) 35%, transparent)"
                         stroke="var(--primary)"
                         strokeWidth="1"
