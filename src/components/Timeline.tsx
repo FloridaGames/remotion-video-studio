@@ -15,7 +15,7 @@ import {
   TRANSITION_LABEL,
 } from "@/remotion/types";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { X } from "lucide-react";
+import { X, ZoomIn, ZoomOut, Maximize2 } from "lucide-react";
 
 type Props = {
   scenes: Scene[];
@@ -25,6 +25,7 @@ type Props = {
   height: number;
   frame: number;
   selectedId: string | null;
+  /** Initial pixels-per-second; user can zoom inside the timeline. */
   pxPerSecond?: number;
   mode?: ProjectMode;
   onSelect: (id: string, startFrame: number) => void;
@@ -40,6 +41,8 @@ const SNAP_SECONDS = 0.5;
 const MIN_SECONDS = 0.5;
 const MULTI_TRACKS = [2, 1] as const; // top-to-bottom: V2 (overlay), V1 (main)
 const MULTI_LANE_HEIGHT = 64;
+const MIN_PX_PER_SEC = 8;
+const MAX_PX_PER_SEC = 400;
 
 export function Timeline({
   scenes,
@@ -49,7 +52,7 @@ export function Timeline({
   height,
   frame,
   selectedId,
-  pxPerSecond = 80,
+  pxPerSecond: pxPerSecondProp = 80,
   mode = "single",
   onSelect,
   onReorder,
@@ -59,9 +62,35 @@ export function Timeline({
   onMoveClip,
 }: Props) {
   const trackRef = useRef<HTMLDivElement | null>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const [pxPerSecond, setPxPerSecond] = useState<number>(pxPerSecondProp);
+  const [fitMode, setFitMode] = useState<boolean>(false);
 
   const totalFrames = useMemo(() => totalDurationFrames(scenes, mode), [scenes, mode]);
   const totalSeconds = totalFrames / fps;
+
+  // Fit-to-width: observe scroll container width and recompute pxPerSecond.
+  useEffect(() => {
+    if (!fitMode) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    const recompute = () => {
+      const w = el.clientWidth;
+      if (w <= 0 || totalSeconds <= 0) return;
+      // Leave ~24px right padding so last clip isn't flush.
+      const next = Math.max(MIN_PX_PER_SEC, Math.min(MAX_PX_PER_SEC, (w - 24) / totalSeconds));
+      setPxPerSecond(next);
+    };
+    recompute();
+    const ro = new ResizeObserver(recompute);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [fitMode, totalSeconds]);
+
+  const zoomBy = (factor: number) => {
+    setFitMode(false);
+    setPxPerSecond((p) => Math.max(MIN_PX_PER_SEC, Math.min(MAX_PX_PER_SEC, p * factor)));
+  };
 
   const starts = useMemo(() => {
     const arr: number[] = [];
