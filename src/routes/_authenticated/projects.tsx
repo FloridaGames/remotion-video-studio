@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Plus, Trash2 } from "lucide-react";
 import { makeScene, totalDurationFrames, DEFAULT_FPS, DEFAULT_WIDTH, DEFAULT_HEIGHT } from "@/remotion/types";
+import type { Scene, SceneType } from "@/remotion/types";
+import { CURATED_STOCK_VIDEOS } from "@/lib/stock-videos";
 
 type ProjectRow = {
   id: string;
@@ -42,7 +44,7 @@ function ProjectsPage() {
 
   async function createProject() {
     if (!user) return;
-    const scenes = [makeScene("video-only"), makeScene("video-only")];
+    const scenes = buildRandomDefaultScenes();
     const { data, error } = await supabase
       .from("projects")
       .insert({
