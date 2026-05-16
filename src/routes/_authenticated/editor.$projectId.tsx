@@ -277,20 +277,16 @@ function EditorPage() {
     setScenes((prev) => {
       if (from === to || from < 0 || from >= prev.length) return prev;
       // Transitions are owned by the clip they're attached to (transitionAfter
-      // lives on the left/owner clip). They ride along naturally with that
-      // scene object during reorders — moving a neighbor never re-parents the
-      // transition. If the owner ends up last, drop the transition (no next
-      // neighbor to transition into).
+      // lives on the owner clip). They ride along with that scene object during
+      // reorders — moving a neighbor never re-parents the transition, and
+      // moving the owner carries the transition with it. If the owner ends up
+      // last, the transition is kept on the scene but becomes inert (no next
+      // neighbor to transition into); it re-activates if the owner is later
+      // moved back in front of another clip.
       const copy = prev.slice();
       const [item] = copy.splice(from, 1);
       const insertAt = Math.max(0, Math.min(copy.length, to));
       copy.splice(insertAt, 0, item);
-      if (copy.length > 0) {
-        const last = copy[copy.length - 1];
-        if (last.transitionAfter) {
-          copy[copy.length - 1] = { ...last, transitionAfter: undefined } as Scene;
-        }
-      }
       return copy;
     });
   }, []);
