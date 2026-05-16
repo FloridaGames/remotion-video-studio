@@ -25,6 +25,9 @@ export type SceneBase = {
   id: string;
   durationFrames: number;
   accent: AccentKey;
+  /** Transition that brings this clip in from the clip before it. */
+  transitionBefore?: SceneTransition;
+  /** @deprecated Legacy storage. Migrated to the next clip's transitionBefore. */
   transitionAfter?: SceneTransition;
   /** Track lane (1 = main V1, 2 = overlay V2). Defaults to 1. */
   track?: number;
@@ -123,6 +126,26 @@ export const DEFAULT_FPS = 30;
 export const DEFAULT_WIDTH = 1920;
 export const DEFAULT_HEIGHT = 1080;
 
+function migrateTransitionOwnership(scenes: Scene[]): Scene[] {
+  const nextScenes = scenes.map((scene) => {
+    const { transitionAfter, ...rest } = scene;
+    return rest as Scene;
+  });
+  scenes.forEach((scene, index) => {
+    if (!scene.transitionAfter || index >= nextScenes.length - 1) return;
+    const next = nextScenes[index + 1];
+    if (!next.transitionBefore) {
+      nextScenes[index + 1] = { ...next, transitionBefore: scene.transitionAfter } as Scene;
+    }
+  });
+  return nextScenes;
+}
+
+export function transitionIntoScene(scenes: Scene[], index: number): SceneTransition | undefined {
+  if (index <= 0) return undefined;
+  return scenes[index]?.transitionBefore ?? scenes[index - 1]?.transitionAfter;
+}
+
 /**
  * Fill in missing track/startFrame on scenes so the renderer + timeline can
  * always assume they're present. In single mode, startFrame is rebuilt from
@@ -130,24 +153,25 @@ export const DEFAULT_HEIGHT = 1080;
  * back to track 1 with sequential start frames.
  */
 export function normalizeScenes(scenes: Scene[], mode: ProjectMode = "single"): Scene[] {
+  const ownedScenes = migrateTransitionOwnership(scenes);
   if (mode === "single") {
     let acc = 0;
-    return scenes.map((s, i) => {
+    return ownedScenes.map((s, i) => {
       const dur = Math.max(1, s.durationFrames);
-      const start = acc;
-      acc += dur;
-      const t = s.transitionAfter;
-      if (t && i < scenes.length - 1) {
-        const next = Math.max(1, scenes[i + 1].durationFrames);
-        const maxOverlap = Math.max(0, Math.min(dur, next) - 1);
+      const t = transitionIntoScene(ownedScenes, i);
+      if (t && i > 0) {
+        const prev = Math.max(1, ownedScenes[i - 1].durationFrames);
+        const maxOverlap = Math.max(0, Math.min(prev, dur) - 1);
         acc -= Math.max(0, Math.min(t.durationFrames, maxOverlap));
       }
+      const start = acc;
+      acc += dur;
       return { ...s, track: 1, startFrame: start } as Scene;
     });
   }
   // multi: keep what's there, fill gaps deterministically
   let acc = 0;
-  return scenes.map((s) => {
+  return ownedScenes.map((s) => {
     const track = s.track ?? 1;
     const startFrame = s.startFrame ?? acc;
     acc = Math.max(acc, startFrame + Math.max(1, s.durationFrames));
