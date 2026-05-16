@@ -30,6 +30,10 @@ export type SceneBase = {
   track?: number;
   /** Absolute start frame on the track. Optional in single-mode (derived from order). */
   startFrame?: number;
+  /** Fade-in length in frames (opacity 0→1 from clip start). Phase-4 keyframes will supersede this. */
+  fadeInFrames?: number;
+  /** Fade-out length in frames (opacity 1→0 at clip end). Phase-4 keyframes will supersede this. */
+  fadeOutFrames?: number;
 };
 
 export type TitleScene = SceneBase & {
