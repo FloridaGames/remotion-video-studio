@@ -607,25 +607,24 @@ export function Timeline({
                     <svg
                       className="pointer-events-none absolute top-0 z-0"
                       style={{
-                        // Anchor the ramp to the OWNER clip (left side of the
-                        // seam). The flat edge sits under the owner; the tip
-                        // points into the next clip. This makes it obvious
-                        // which clip the transition belongs to.
+                        // Anchor the marker entirely under the OWNER clip
+                        // (left of the seam). The vertical edge sits on the
+                        // seam — making it obvious which clip owns the
+                        // transition. Moving the owner moves this marker.
                         left: seamLeft - rampPx,
-                        width: rampPx * 2,
+                        width: rampPx,
                         height: 24,
                       }}
-                      viewBox={`0 0 ${rampPx * 2} 24`}
+                      viewBox={`0 0 ${rampPx} 24`}
                       preserveAspectRatio="none"
                       aria-hidden
                     >
                       <title>{`${TRANSITION_LABEL[t.kind]} ${(t.durationFrames / fps).toFixed(2)}s`}</title>
-                      {/* Right triangle: flat top sits under the owner clip
-                          (from 0 to seam at rampPx), tip extends rampPx into
-                          the next clip. Vertical edge marks the owner's
-                          trailing boundary. */}
+                      {/* Right triangle: hypotenuse slopes down from inside
+                          the owner clip to the seam; vertical edge sits on
+                          the seam (owner's trailing boundary). */}
                       <polygon
-                        points={`0,2 ${rampPx},2 ${rampPx},18 ${rampPx * 2},2`}
+                        points={`0,2 ${rampPx},2 ${rampPx},20`}
                         fill="color-mix(in oklab, var(--primary) 35%, transparent)"
                         stroke="var(--primary)"
                         strokeWidth="1"
