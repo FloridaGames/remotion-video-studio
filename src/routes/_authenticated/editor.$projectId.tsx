@@ -824,47 +824,6 @@ function EditorPage() {
             </div>
           )}
         </div>
-        {viewMode === "timeline" && scenes.length > 0 && (
-          <Timeline
-            scenes={scenes}
-            composition={composition}
-            fps={fps}
-            width={width}
-            height={height}
-            frame={frame}
-            selectedId={selectedId}
-            mode={mode}
-            onSelect={(id, startFrame) => {
-              setSelectedId(id);
-              seekToFrame(startFrame);
-            }}
-            onReorder={reorderTo}
-            onTrim={(id, durationFrames) => updateScene(id, { durationFrames })}
-            onSeek={seekToFrame}
-            onTransitionChange={(id, transitionAfter) =>
-              updateScene(id, { transitionAfter } as any)
-            }
-            onMoveClip={moveClip}
-          />
-        )}
-        {viewMode === "timeline" && (
-          <div className="rounded-xl border border-border bg-card p-3">
-            <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Add scene
-            </div>
-            <div className="flex flex-wrap gap-1">
-              {(Object.keys(SCENE_TEMPLATE_LABEL) as SceneType[]).map((t) => (
-                <button
-                  key={t}
-                  onClick={() => addScene(t)}
-                  className="flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs hover:border-primary hover:bg-muted"
-                >
-                  <Plus className="h-3 w-3" /> {SCENE_TEMPLATE_LABEL[t]}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
         </section>
 
         {/* Inspector */}
@@ -880,6 +839,65 @@ function EditorPage() {
           )}
         </aside>
       </div>
+
+      {/* Bottom dock: timeline (always visible header, collapsible body) */}
+      {viewMode === "timeline" && (
+        <div className="shrink-0 rounded-xl border border-border bg-card">
+          <div className="flex items-center justify-between gap-2 px-3 py-2">
+            <button
+              onClick={() => setTimelineOpen((v) => !v)}
+              className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground"
+              title={timelineOpen ? "Collapse timeline" : "Expand timeline"}
+            >
+              {timelineOpen ? (
+                <ChevronDown className="h-3 w-3" />
+              ) : (
+                <ChevronUp className="h-3 w-3" />
+              )}
+              Timeline
+            </button>
+            <div className="flex flex-wrap items-center gap-1">
+              <span className="mr-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+                Add
+              </span>
+              {(Object.keys(SCENE_TEMPLATE_LABEL) as SceneType[]).map((t) => (
+                <button
+                  key={t}
+                  onClick={() => addScene(t)}
+                  className="flex items-center gap-1 rounded-md border border-border px-2 py-0.5 text-[11px] hover:border-primary hover:bg-muted"
+                >
+                  <Plus className="h-3 w-3" /> {SCENE_TEMPLATE_LABEL[t]}
+                </button>
+              ))}
+            </div>
+          </div>
+          {timelineOpen && scenes.length > 0 && (
+            <div className="border-t border-border p-2">
+              <Timeline
+                scenes={scenes}
+                composition={composition}
+                fps={fps}
+                width={width}
+                height={height}
+                frame={frame}
+                selectedId={selectedId}
+                mode={mode}
+                onSelect={(id, startFrame) => {
+                  setSelectedId(id);
+                  seekToFrame(startFrame);
+                }}
+                onReorder={reorderTo}
+                onTrim={(id, durationFrames) => updateScene(id, { durationFrames })}
+                onSeek={seekToFrame}
+                onTransitionChange={(id, transitionAfter) =>
+                  updateScene(id, { transitionAfter } as any)
+                }
+                onMoveClip={moveClip}
+              />
+            </div>
+          )}
+        </div>
+      )}
     </main>
   );
 }
