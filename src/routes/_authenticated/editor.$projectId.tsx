@@ -1113,6 +1113,34 @@ function Inspector({
             </Field>
           </>
         )}
+        {scene.type === "video-only" && (
+          <>
+            <VideoField
+              url={scene.videoUrl}
+              onPick={(videoUrl, durationFrames) =>
+                onChange(durationFrames ? { videoUrl, durationFrames } : { videoUrl })
+              }
+            />
+            <Field label="Fit">
+              <div className="flex gap-2">
+                {(["cover", "contain"] as const).map((f) => (
+                  <button
+                    key={f}
+                    type="button"
+                    onClick={() => onChange({ fit: f })}
+                    className={`flex-1 rounded-md border px-3 py-1.5 text-sm capitalize ${
+                      (scene.fit ?? "cover") === f
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border hover:border-primary"
+                    }`}
+                  >
+                    {f}
+                  </button>
+                ))}
+              </div>
+            </Field>
+          </>
+        )}
       </Section>
 
       <Section title="Style">
