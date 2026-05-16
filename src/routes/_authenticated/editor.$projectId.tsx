@@ -9,7 +9,6 @@ import {
   ACCENT_HEX,
   type AccentKey,
   type Scene,
-  type SceneTransition,
   SCENE_TEMPLATE_LABEL,
   type SceneType,
   type ProjectMode,
