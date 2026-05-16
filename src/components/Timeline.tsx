@@ -262,11 +262,20 @@ export function Timeline({
           <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Timeline · Multi-track
           </div>
-          <div className="text-[10px] text-muted-foreground">
-            Drag horizontally to reposition · Drag between lanes to change track · Drag right edge to trim
+          <div className="flex items-center gap-2">
+            <span className="hidden text-[10px] text-muted-foreground md:inline">
+              Drag to reposition · between lanes to change track · right edge to trim
+            </span>
+            <ZoomControls
+              pxPerSecond={pxPerSecond}
+              fitMode={fitMode}
+              onZoomOut={() => zoomBy(1 / 1.4)}
+              onZoomIn={() => zoomBy(1.4)}
+              onFit={() => setFitMode((v) => !v)}
+            />
           </div>
         </div>
-        <div className="overflow-x-auto" ref={trackRef}>
+        <div className="overflow-x-auto" ref={(el) => { trackRef.current = el; scrollRef.current = el; }}>
           <div className="relative" style={{ width: trackWidth }}>
             <div
               onClick={rulerSeek}
@@ -383,11 +392,20 @@ export function Timeline({
         <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Timeline
         </div>
-        <div className="text-[10px] text-muted-foreground">
-          Drag block to reorder · Drag right edge to trim · Click seam (○) to add transition
+        <div className="flex items-center gap-2">
+          <span className="hidden text-[10px] text-muted-foreground md:inline">
+            Drag to reorder · right edge to trim · seam (○) for transition
+          </span>
+          <ZoomControls
+            pxPerSecond={pxPerSecond}
+            fitMode={fitMode}
+            onZoomOut={() => zoomBy(1 / 1.4)}
+            onZoomIn={() => zoomBy(1.4)}
+            onFit={() => setFitMode((v) => !v)}
+          />
         </div>
       </div>
-      <div className="overflow-x-auto" ref={trackRef}>
+      <div className="overflow-x-auto" ref={(el) => { trackRef.current = el; scrollRef.current = el; }}>
         <div className="relative" style={{ width: trackWidth }}>
           {/* Ruler */}
           <div
