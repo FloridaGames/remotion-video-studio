@@ -11,6 +11,7 @@ import {
   ACCENT_HEX,
   totalDurationFrames,
   TRANSITION_LABEL,
+  transitionIntoScene,
 } from "@/remotion/types";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { X, ZoomIn, ZoomOut, Maximize2 } from "lucide-react";
@@ -184,15 +185,15 @@ export function Timeline({
     let acc = 0;
     for (let i = 0; i < scenes.length; i++) {
       const s = scenes[i];
-      arr.push(acc);
-      acc += Math.max(1, s.durationFrames);
-      const t = s.transitionAfter;
-      if (t && i < scenes.length - 1) {
-        const next = Math.max(1, scenes[i + 1].durationFrames);
+      const t = transitionIntoScene(scenes, i);
+      if (t && i > 0) {
+        const prev = Math.max(1, scenes[i - 1].durationFrames);
         const cur = Math.max(1, s.durationFrames);
-        const maxOverlap = Math.max(0, Math.min(cur, next) - 1);
+        const maxOverlap = Math.max(0, Math.min(prev, cur) - 1);
         acc -= Math.max(0, Math.min(t.durationFrames, maxOverlap));
       }
+      arr.push(acc);
+      acc += Math.max(1, s.durationFrames);
     }
     return arr;
   }, [scenes]);
