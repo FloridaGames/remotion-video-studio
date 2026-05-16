@@ -44,6 +44,49 @@ const MULTI_LANE_HEIGHT = 64;
 const MIN_PX_PER_SEC = 8;
 const MAX_PX_PER_SEC = 400;
 
+function ZoomControls({
+  pxPerSecond,
+  fitMode,
+  onZoomOut,
+  onZoomIn,
+  onFit,
+}: {
+  pxPerSecond: number;
+  fitMode: boolean;
+  onZoomOut: () => void;
+  onZoomIn: () => void;
+  onFit: () => void;
+}) {
+  return (
+    <div className="flex items-center gap-0.5 rounded-md border border-border bg-background p-0.5">
+      <button
+        onClick={onZoomOut}
+        className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+        title="Zoom out"
+      >
+        <ZoomOut className="h-3 w-3" />
+      </button>
+      <span className="min-w-[3.5rem] text-center font-mono text-[10px] tabular-nums text-muted-foreground">
+        {Math.round(pxPerSecond)} px/s
+      </span>
+      <button
+        onClick={onZoomIn}
+        className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+        title="Zoom in"
+      >
+        <ZoomIn className="h-3 w-3" />
+      </button>
+      <button
+        onClick={onFit}
+        className={`rounded p-1 ${fitMode ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
+        title="Fit to width"
+      >
+        <Maximize2 className="h-3 w-3" />
+      </button>
+    </div>
+  );
+}
+
 export function Timeline({
   scenes,
   composition,
