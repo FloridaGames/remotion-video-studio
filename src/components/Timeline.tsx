@@ -598,11 +598,11 @@ export function Timeline({
           {/* Transition lane (below the clip track, like multi-track UX) */}
           <div className="relative h-6 border-t border-border/40 bg-muted/20">
             {blocks.map((b, index) => {
-              const t = b.scene.transitionAfter;
-              const hasNextClip = index < blocks.length - 1;
-              if (!t && !hasNextClip) return null;
+              const t = transitionIntoScene(scenes, index);
+              const hasPrevClip = index > 0;
+              if (!t && !hasPrevClip) return null;
               const ownerDx = dragging?.idx === b.idx ? dragging.dx : 0;
-              const seamLeft = b.left + b.width + ownerDx;
+              const seamLeft = b.left + ownerDx;
               // Ramp width: visual representation of overlap duration.
               const rampPx = t ? (t.durationFrames / fps) * pxPerSecond : 0;
               return (
@@ -611,11 +611,10 @@ export function Timeline({
                     <svg
                       className="pointer-events-none absolute top-0 z-0"
                       style={{
-                        // Anchor the marker entirely under the OWNER clip
-                        // (left of the seam). The vertical edge sits on the
-                        // seam — making it obvious which clip owns the
-                        // transition. Moving the owner moves this marker.
-                        left: seamLeft - rampPx,
+                        // Anchor the marker inside the OWNER clip (right of
+                        // the seam). The vertical edge sits on the owner's
+                        // leading boundary, so moving the owner moves it too.
+                        left: seamLeft,
                         width: rampPx,
                         height: 24,
                       }}
@@ -624,11 +623,10 @@ export function Timeline({
                       aria-hidden
                     >
                       <title>{`${TRANSITION_LABEL[t.kind]} ${(t.durationFrames / fps).toFixed(2)}s`}</title>
-                      {/* Right triangle: hypotenuse slopes down from inside
-                          the owner clip to the seam; vertical edge sits on
-                          the seam (owner's trailing boundary). */}
+                      {/* Left triangle: vertical edge sits on the owner clip's
+                          leading boundary and points into the owner. */}
                       <polygon
-                        points={`0,2 ${rampPx},2 ${rampPx},20`}
+                        points={`0,2 ${rampPx},2 0,20`}
                         fill="color-mix(in oklab, var(--primary) 35%, transparent)"
                         stroke="var(--primary)"
                         strokeWidth="1"
