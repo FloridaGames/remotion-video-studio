@@ -596,8 +596,10 @@ export function Timeline({
 
           {/* Transition lane (below the clip track, like multi-track UX) */}
           <div className="relative h-6 border-t border-border/40 bg-muted/20">
-            {blocks.slice(0, -1).map((b) => {
+            {blocks.map((b, index) => {
               const t = b.scene.transitionAfter;
+              const hasNextClip = index < blocks.length - 1;
+              if (!t && !hasNextClip) return null;
               const ownerDx = dragging?.idx === b.idx ? dragging.dx : 0;
               const seamLeft = b.left + b.width + ownerDx;
               // Ramp width: visual representation of overlap duration.
