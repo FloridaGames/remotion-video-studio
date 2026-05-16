@@ -42,7 +42,7 @@ function ProjectsPage() {
 
   async function createProject() {
     if (!user) return;
-    const scenes = [makeScene("title"), makeScene("talking-point"), makeScene("outro")];
+    const scenes = [makeScene("video-only"), makeScene("video-only")];
     const { data, error } = await supabase
       .from("projects")
       .insert({
