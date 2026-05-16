@@ -38,6 +38,7 @@ import {
   Redo2,
   Copy,
   ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { StockVideoPicker } from "@/components/StockVideoPicker";
 import { Timeline } from "@/components/Timeline";
