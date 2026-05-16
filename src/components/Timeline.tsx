@@ -618,8 +618,8 @@ export function Timeline({
                       <title>{`${TRANSITION_LABEL[t.kind]} ${(t.durationFrames / fps).toFixed(2)}s`}</title>
                       <polygon
                         points={`0,2 ${rampPx},2 ${rampPx / 2},18`}
-                        fill="hsl(var(--primary) / 0.35)"
-                        stroke="hsl(var(--primary))"
+                        fill="color-mix(in oklab, var(--primary) 35%, transparent)"
+                        stroke="var(--primary)"
                         strokeWidth="1"
                       />
                     </svg>
