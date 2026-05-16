@@ -878,37 +878,22 @@ function EditorPage() {
 
       {/* Bottom dock: timeline (always visible header, collapsible body) */}
       {viewMode === "timeline" && (
-        <div className="flex shrink-0 flex-col gap-2">
-          <div className="flex items-center justify-between gap-2 rounded-xl border border-border bg-card px-3 py-2">
-            <button
-              onClick={() => setTimelineOpen((v) => !v)}
-              className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground"
-              title={timelineOpen ? "Collapse timeline" : "Expand timeline"}
-            >
-              {timelineOpen ? (
-                <ChevronDown className="h-3 w-3" />
-              ) : (
-                <ChevronUp className="h-3 w-3" />
-              )}
-              Timeline
-            </button>
-            <div className="flex flex-wrap items-center gap-1">
-              <span className="mr-1 text-[10px] uppercase tracking-wider text-muted-foreground">
-                Add
-              </span>
-              {(Object.keys(SCENE_TEMPLATE_LABEL) as SceneType[]).map((t) => (
-                <button
-                  key={t}
-                  onClick={() => addScene(t)}
-                  className="flex items-center gap-1 rounded-md border border-border px-2 py-0.5 text-[11px] hover:border-primary hover:bg-muted"
-                >
-                  <Plus className="h-3 w-3" /> {SCENE_TEMPLATE_LABEL[t]}
-                </button>
-              ))}
-            </div>
-          </div>
+        <div className="flex shrink-0 flex-col overflow-hidden rounded-xl border border-border bg-card">
+          <button
+            onClick={() => setTimelineOpen((v) => !v)}
+            className="flex items-center gap-1.5 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground"
+            title={timelineOpen ? "Collapse timeline" : "Expand timeline"}
+          >
+            {timelineOpen ? (
+              <ChevronDown className="h-3 w-3" />
+            ) : (
+              <ChevronUp className="h-3 w-3" />
+            )}
+            Timeline
+          </button>
           {timelineOpen && scenes.length > 0 && (
-            <Timeline
+            <div className="border-t border-border">
+              <Timeline
                 scenes={scenes}
                 composition={composition}
                 fps={fps}
@@ -929,6 +914,7 @@ function EditorPage() {
                 }
                 onMoveClip={moveClip}
               />
+            </div>
           )}
         </div>
       )}
