@@ -180,9 +180,10 @@ export function normalizeScenes(scenes: Scene[], mode: ProjectMode = "single"): 
 }
 
 export function totalDurationFrames(scenes: Scene[], mode: ProjectMode = "single"): number {
+  const ownedScenes = migrateTransitionOwnership(scenes);
   if (mode === "multi") {
     let max = 0;
-    for (const s of scenes) {
+    for (const s of ownedScenes) {
       const start = s.startFrame ?? 0;
       const end = start + Math.max(1, s.durationFrames);
       if (end > max) max = end;
@@ -190,13 +191,13 @@ export function totalDurationFrames(scenes: Scene[], mode: ProjectMode = "single
     return Math.max(1, max);
   }
   let total = 0;
-  for (let i = 0; i < scenes.length; i++) {
-    total += Math.max(1, scenes[i].durationFrames);
+  for (let i = 0; i < ownedScenes.length; i++) {
+    total += Math.max(1, ownedScenes[i].durationFrames);
     // Transitions overlap the next scene, so subtract the overlap.
-    const t = scenes[i].transitionAfter;
-    if (t && i < scenes.length - 1) {
-      const next = Math.max(1, scenes[i + 1].durationFrames);
-      const cur = Math.max(1, scenes[i].durationFrames);
+    const t = transitionIntoScene(ownedScenes, i + 1);
+    if (t && i < ownedScenes.length - 1) {
+      const next = Math.max(1, ownedScenes[i + 1].durationFrames);
+      const cur = Math.max(1, ownedScenes[i].durationFrames);
       const maxOverlap = Math.max(0, Math.min(cur, next) - 1);
       total -= Math.max(0, Math.min(t.durationFrames, maxOverlap));
     }
