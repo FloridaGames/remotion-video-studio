@@ -44,6 +44,52 @@ const MULTI_LANE_HEIGHT = 64;
 const MIN_PX_PER_SEC = 8;
 const MAX_PX_PER_SEC = 400;
 
+function FadeOverlays({
+  scene,
+  fps,
+  pxPerSecond,
+  blockWidth,
+}: {
+  scene: Scene;
+  fps: number;
+  pxPerSecond: number;
+  blockWidth: number;
+}) {
+  const fadeIn = Math.max(0, scene.fadeInFrames ?? 0);
+  const fadeOut = Math.max(0, scene.fadeOutFrames ?? 0);
+  if (fadeIn === 0 && fadeOut === 0) return null;
+  const inW = Math.min(blockWidth, (fadeIn / fps) * pxPerSecond);
+  const outW = Math.min(blockWidth, (fadeOut / fps) * pxPerSecond);
+  return (
+    <>
+      {fadeIn > 0 && (
+        <div
+          className="pointer-events-none absolute left-0 top-0 bottom-0 z-[15]"
+          style={{
+            width: inW,
+            background:
+              "linear-gradient(to right, hsl(var(--background) / 0.85), transparent)",
+            clipPath: `polygon(0 0, 100% 100%, 0 100%)`,
+          }}
+          title={`Fade in ${(fadeIn / fps).toFixed(2)}s`}
+        />
+      )}
+      {fadeOut > 0 && (
+        <div
+          className="pointer-events-none absolute right-0 top-0 bottom-0 z-[15]"
+          style={{
+            width: outW,
+            background:
+              "linear-gradient(to left, hsl(var(--background) / 0.85), transparent)",
+            clipPath: `polygon(100% 0, 100% 100%, 0 100%)`,
+          }}
+          title={`Fade out ${(fadeOut / fps).toFixed(2)}s`}
+        />
+      )}
+    </>
+  );
+}
+
 function ZoomControls({
   pxPerSecond,
   fitMode,
