@@ -38,6 +38,7 @@ import {
   Redo2,
   Copy,
   ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { StockVideoPicker } from "@/components/StockVideoPicker";
 import { Timeline } from "@/components/Timeline";
@@ -94,6 +95,7 @@ function EditorPage() {
   const [zoom, setZoom] = useState<(typeof ZOOM_OPTIONS)[number]["value"]>("fit");
   const [showSafe, setShowSafe] = useState(false);
   const [viewMode, setViewMode] = useState<"timeline" | "storyboard">("timeline");
+  const [timelineOpen, setTimelineOpen] = useState(true);
 
   const audioUrl = useSignedUrl("video-audio", audioPath);
 
@@ -485,12 +487,17 @@ function EditorPage() {
   // Player container styling for zoom
   const playerContainerStyle: React.CSSProperties =
     zoom === "fit"
-      ? { width: "100%", aspectRatio: `${width} / ${height}` }
+      ? {
+          aspectRatio: `${width} / ${height}`,
+          width: "100%",
+          maxWidth: "100%",
+          maxHeight: "100%",
+        }
       : { width: width * Number(zoom), aspectRatio: `${width} / ${height}` };
 
   return (
-    <main className="mx-auto max-w-[1600px] px-4 py-6">
-      <div className="mb-4 flex items-center justify-between gap-4">
+    <main className="mx-auto flex h-[calc(100dvh-65px)] max-w-[1600px] flex-col gap-3 px-4 py-3">
+      <div className="flex shrink-0 items-center justify-between gap-4">
         <Input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
@@ -567,7 +574,7 @@ function EditorPage() {
       </div>
 
       <div
-        className={`grid gap-4 ${
+        className={`grid min-h-0 flex-1 gap-4 ${
           viewMode === "storyboard"
             ? "lg:grid-cols-[280px_1fr_340px]"
             : "lg:grid-cols-[1fr_340px]"
@@ -575,7 +582,7 @@ function EditorPage() {
       >
         {/* Scene list with thumbnails (storyboard mode only) */}
         {viewMode === "storyboard" && (
-        <aside className="min-w-0 rounded-xl border border-border bg-card p-3">
+        <aside className="min-h-0 min-w-0 overflow-y-auto rounded-xl border border-border bg-card p-3">
           <div className="mb-2 px-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Scenes
           </div>
@@ -660,8 +667,8 @@ function EditorPage() {
         )}
 
         {/* Player + transport */}
-        <section className="flex min-w-0 flex-col gap-3">
-        <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-3">
+        <section className="flex min-h-0 min-w-0 flex-col gap-3 overflow-hidden">
+        <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden rounded-xl border border-border bg-card p-3">
           {/* Toolbar above player */}
           <div className="flex items-center justify-between gap-2 text-xs">
             <div className="flex items-center gap-2">
@@ -703,7 +710,7 @@ function EditorPage() {
           </div>
 
           {/* Player */}
-          <div className="flex items-center justify-center overflow-auto rounded-lg bg-muted/40 p-2">
+          <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto rounded-lg bg-muted/40 p-2">
             {scenes.length === 0 ? (
               <div className="flex aspect-video w-full items-center justify-center text-muted-foreground">
                 Add a scene to get started
@@ -743,7 +750,7 @@ function EditorPage() {
 
           {/* Transport bar */}
           {scenes.length > 0 && (
-            <div className="space-y-2">
+            <div className="shrink-0 space-y-2">
               {/* Scrub */}
               <div className="relative h-2 w-full">
                 <input
@@ -817,51 +824,10 @@ function EditorPage() {
             </div>
           )}
         </div>
-        {viewMode === "timeline" && scenes.length > 0 && (
-          <Timeline
-            scenes={scenes}
-            composition={composition}
-            fps={fps}
-            width={width}
-            height={height}
-            frame={frame}
-            selectedId={selectedId}
-            mode={mode}
-            onSelect={(id, startFrame) => {
-              setSelectedId(id);
-              seekToFrame(startFrame);
-            }}
-            onReorder={reorderTo}
-            onTrim={(id, durationFrames) => updateScene(id, { durationFrames })}
-            onSeek={seekToFrame}
-            onTransitionChange={(id, transitionAfter) =>
-              updateScene(id, { transitionAfter } as any)
-            }
-            onMoveClip={moveClip}
-          />
-        )}
-        {viewMode === "timeline" && (
-          <div className="rounded-xl border border-border bg-card p-3">
-            <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Add scene
-            </div>
-            <div className="flex flex-wrap gap-1">
-              {(Object.keys(SCENE_TEMPLATE_LABEL) as SceneType[]).map((t) => (
-                <button
-                  key={t}
-                  onClick={() => addScene(t)}
-                  className="flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs hover:border-primary hover:bg-muted"
-                >
-                  <Plus className="h-3 w-3" /> {SCENE_TEMPLATE_LABEL[t]}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
         </section>
 
         {/* Inspector */}
-        <aside className="min-w-0 rounded-xl border border-border bg-card p-4">
+        <aside className="min-h-0 min-w-0 overflow-y-auto rounded-xl border border-border bg-card p-4">
           {selected ? (
             <Inspector
               scene={selected}
@@ -873,6 +839,63 @@ function EditorPage() {
           )}
         </aside>
       </div>
+
+      {/* Bottom dock: timeline (always visible header, collapsible body) */}
+      {viewMode === "timeline" && (
+        <div className="flex shrink-0 flex-col gap-2">
+          <div className="flex items-center justify-between gap-2 rounded-xl border border-border bg-card px-3 py-2">
+            <button
+              onClick={() => setTimelineOpen((v) => !v)}
+              className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground"
+              title={timelineOpen ? "Collapse timeline" : "Expand timeline"}
+            >
+              {timelineOpen ? (
+                <ChevronDown className="h-3 w-3" />
+              ) : (
+                <ChevronUp className="h-3 w-3" />
+              )}
+              Timeline
+            </button>
+            <div className="flex flex-wrap items-center gap-1">
+              <span className="mr-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+                Add
+              </span>
+              {(Object.keys(SCENE_TEMPLATE_LABEL) as SceneType[]).map((t) => (
+                <button
+                  key={t}
+                  onClick={() => addScene(t)}
+                  className="flex items-center gap-1 rounded-md border border-border px-2 py-0.5 text-[11px] hover:border-primary hover:bg-muted"
+                >
+                  <Plus className="h-3 w-3" /> {SCENE_TEMPLATE_LABEL[t]}
+                </button>
+              ))}
+            </div>
+          </div>
+          {timelineOpen && scenes.length > 0 && (
+            <Timeline
+                scenes={scenes}
+                composition={composition}
+                fps={fps}
+                width={width}
+                height={height}
+                frame={frame}
+                selectedId={selectedId}
+                mode={mode}
+                onSelect={(id, startFrame) => {
+                  setSelectedId(id);
+                  seekToFrame(startFrame);
+                }}
+                onReorder={reorderTo}
+                onTrim={(id, durationFrames) => updateScene(id, { durationFrames })}
+                onSeek={seekToFrame}
+                onTransitionChange={(id, transitionAfter) =>
+                  updateScene(id, { transitionAfter } as any)
+                }
+                onMoveClip={moveClip}
+              />
+          )}
+        </div>
+      )}
     </main>
   );
 }
