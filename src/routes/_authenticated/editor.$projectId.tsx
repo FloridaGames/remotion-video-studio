@@ -854,9 +854,6 @@ function EditorPage() {
                   {fmtTime(frame, fps)} / {fmtTime(durationInFrames, fps)}
                 </div>
               </div>
-              <p className="text-center text-[10px] text-muted-foreground">
-                Space: play · J/L: ±1s · ←/→: ±1f (Shift = ±1s) · ⌘D dup · ⌫ delete · ⌥↑↓ reorder · ⌘Z undo
-              </p>
             </div>
           )}
         </div>
