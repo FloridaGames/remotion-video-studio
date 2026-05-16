@@ -68,7 +68,7 @@ function FadeOverlays({
           style={{
             width: inW,
             background:
-              "linear-gradient(to right, hsl(var(--background) / 0.85), transparent)",
+              "linear-gradient(to right, rgba(0,0,0,0.65), rgba(0,0,0,0))",
             clipPath: `polygon(0 0, 100% 100%, 0 100%)`,
           }}
           title={`Fade in ${(fadeIn / fps).toFixed(2)}s`}
@@ -80,7 +80,7 @@ function FadeOverlays({
           style={{
             width: outW,
             background:
-              "linear-gradient(to left, hsl(var(--background) / 0.85), transparent)",
+              "linear-gradient(to left, rgba(0,0,0,0.65), rgba(0,0,0,0))",
             clipPath: `polygon(100% 0, 100% 100%, 0 100%)`,
           }}
           title={`Fade out ${(fadeOut / fps).toFixed(2)}s`}
