@@ -607,7 +607,11 @@ export function Timeline({
                     <svg
                       className="pointer-events-none absolute top-0 z-0"
                       style={{
-                        left: seamLeft - rampPx / 2,
+                        // Anchor the marker entirely under the OWNER clip
+                        // (left of the seam). The vertical edge sits on the
+                        // seam — making it obvious which clip owns the
+                        // transition. Moving the owner moves this marker.
+                        left: seamLeft - rampPx,
                         width: rampPx,
                         height: 24,
                       }}
@@ -616,8 +620,11 @@ export function Timeline({
                       aria-hidden
                     >
                       <title>{`${TRANSITION_LABEL[t.kind]} ${(t.durationFrames / fps).toFixed(2)}s`}</title>
+                      {/* Right triangle: hypotenuse slopes down from inside
+                          the owner clip to the seam; vertical edge sits on
+                          the seam (owner's trailing boundary). */}
                       <polygon
-                        points={`0,2 ${rampPx},2 ${rampPx / 2},18`}
+                        points={`0,2 ${rampPx},2 ${rampPx},20`}
                         fill="color-mix(in oklab, var(--primary) 35%, transparent)"
                         stroke="var(--primary)"
                         strokeWidth="1"

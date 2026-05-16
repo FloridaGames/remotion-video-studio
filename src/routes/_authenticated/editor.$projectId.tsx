@@ -9,7 +9,6 @@ import {
   ACCENT_HEX,
   type AccentKey,
   type Scene,
-  type SceneTransition,
   SCENE_TEMPLATE_LABEL,
   type SceneType,
   type ProjectMode,
@@ -277,46 +276,22 @@ function EditorPage() {
   const reorderTo = useCallback((from: number, to: number) => {
     setScenes((prev) => {
       if (from === to || from < 0 || from >= prev.length) return prev;
-      // Snapshot transitions as (leftId, rightId) pairs so we can re-attach
-      // them after the reorder. This makes transitions follow the moved clip
-      // instead of staying anchored to a timeline position.
-      const pairs: { leftId: string; rightId: string; t: SceneTransition }[] = [];
-      for (let i = 0; i < prev.length - 1; i++) {
-        const t = prev[i].transitionAfter;
-        if (t) pairs.push({ leftId: prev[i].id, rightId: prev[i + 1].id, t });
-      }
+      // Transitions are owned by the clip they're attached to (transitionAfter
+      // lives on the left/owner clip). They ride along naturally with that
+      // scene object during reorders — moving a neighbor never re-parents the
+      // transition. If the owner ends up last, drop the transition (no next
+      // neighbor to transition into).
       const copy = prev.slice();
       const [item] = copy.splice(from, 1);
       const insertAt = Math.max(0, Math.min(copy.length, to));
       copy.splice(insertAt, 0, item);
-      const movedId = item.id;
-      const stripped = copy.map((s) => ({ ...s, transitionAfter: undefined })) as Scene[];
-      const idxOf = (id: string) => stripped.findIndex((s) => s.id === id);
-      for (const p of pairs) {
-        if (p.leftId === movedId) {
-          // Transition lived after the moved clip → keep it after the moved
-          // clip at its new spot (if it still has a next neighbor).
-          const li = idxOf(movedId);
-          if (li >= 0 && li < stripped.length - 1) {
-            stripped[li] = { ...stripped[li], transitionAfter: p.t } as Scene;
-          }
-        } else if (p.rightId === movedId) {
-          // Transition led into the moved clip → keep it leading into the
-          // moved clip at its new spot (if it has a previous neighbor).
-          const ri = idxOf(movedId);
-          if (ri > 0) {
-            stripped[ri - 1] = { ...stripped[ri - 1], transitionAfter: p.t } as Scene;
-          }
-        } else {
-          // Neither neighbor moved → restore if the pair is still adjacent.
-          const li = idxOf(p.leftId);
-          const ri = idxOf(p.rightId);
-          if (li >= 0 && ri === li + 1) {
-            stripped[li] = { ...stripped[li], transitionAfter: p.t } as Scene;
-          }
+      if (copy.length > 0) {
+        const last = copy[copy.length - 1];
+        if (last.transitionAfter) {
+          copy[copy.length - 1] = { ...last, transitionAfter: undefined } as Scene;
         }
       }
-      return stripped;
+      return copy;
     });
   }, []);
 
