@@ -444,6 +444,12 @@ export function Timeline({
                         {(b.scene.durationFrames / fps).toFixed(1)}s
                       </div>
                     </div>
+                    <FadeOverlays
+                      scene={b.scene}
+                      fps={fps}
+                      pxPerSecond={pxPerSecond}
+                      blockWidth={Math.max(20, b.width)}
+                    />
                     <div
                       data-handle="trim"
                       onMouseDown={(e) => {
