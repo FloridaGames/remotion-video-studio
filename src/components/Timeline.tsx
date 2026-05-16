@@ -599,12 +599,36 @@ export function Timeline({
             {blocks.slice(0, -1).map((b) => {
               const t = b.scene.transitionAfter;
               const seamLeft = b.left + b.width;
+              // Ramp width: visual representation of overlap duration.
+              const rampPx = t ? (t.durationFrames / fps) * pxPerSecond : 0;
               return (
-                <Popover key={b.scene.id + "-seam"}>
+                <div key={b.scene.id + "-seam"}>
+                  {t && rampPx > 2 && (
+                    <svg
+                      className="pointer-events-none absolute top-0 z-0"
+                      style={{
+                        left: seamLeft - rampPx / 2,
+                        width: rampPx,
+                        height: 24,
+                      }}
+                      viewBox={`0 0 ${rampPx} 24`}
+                      preserveAspectRatio="none"
+                      aria-hidden
+                    >
+                      <title>{`${TRANSITION_LABEL[t.kind]} ${(t.durationFrames / fps).toFixed(2)}s`}</title>
+                      <polygon
+                        points={`0,2 ${rampPx},2 ${rampPx / 2},18`}
+                        fill="hsl(var(--primary) / 0.35)"
+                        stroke="hsl(var(--primary))"
+                        strokeWidth="1"
+                      />
+                    </svg>
+                  )}
+                  <Popover>
                   <PopoverTrigger asChild>
                     <button
                       title={t ? `${TRANSITION_LABEL[t.kind]} ${(t.durationFrames / fps).toFixed(1)}s` : "Add transition"}
-                      className={`absolute top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border text-[10px] font-bold leading-none ${
+                      className={`absolute top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 rounded-full border text-[10px] font-bold leading-none ${
                         t
                           ? "h-5 px-2 border-primary bg-primary text-primary-foreground"
                           : "h-4 w-4 border-border bg-background text-muted-foreground opacity-70 hover:opacity-100"
@@ -667,7 +691,8 @@ export function Timeline({
                       </button>
                     ) : null}
                   </PopoverContent>
-                </Popover>
+                  </Popover>
+                </div>
               );
             })}
           </div>
