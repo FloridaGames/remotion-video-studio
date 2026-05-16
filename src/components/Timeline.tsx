@@ -529,7 +529,7 @@ export function Timeline({
                   key={b.scene.id}
                   className={`group absolute top-1 bottom-1 rounded-md border-2 select-none ${
                     isSelected ? "border-primary" : "border-border"
-                  } ${isDragging ? "opacity-70 z-20" : isSelected ? "z-20" : "z-10 hover:z-20"}`}
+                  } ${isDragging ? "opacity-70 z-40" : isSelected ? "z-40" : "z-10 hover:z-40"}`}
                   style={{
                     left: b.left + dx,
                     width: Math.max(20, b.width),
