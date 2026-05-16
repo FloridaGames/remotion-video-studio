@@ -1118,6 +1118,24 @@ function Inspector({
             onValueChange={([v]) => onChange({ durationFrames: v })}
           />
         </Field>
+        <Field label={`Fade in: ${((scene.fadeInFrames ?? 0) / FPS).toFixed(2)}s`}>
+          <Slider
+            min={0}
+            max={Math.min(scene.durationFrames, 180)}
+            step={3}
+            value={[scene.fadeInFrames ?? 0]}
+            onValueChange={([v]) => onChange({ fadeInFrames: v })}
+          />
+        </Field>
+        <Field label={`Fade out: ${((scene.fadeOutFrames ?? 0) / FPS).toFixed(2)}s`}>
+          <Slider
+            min={0}
+            max={Math.min(scene.durationFrames, 180)}
+            step={3}
+            value={[scene.fadeOutFrames ?? 0]}
+            onValueChange={([v]) => onChange({ fadeOutFrames: v })}
+          />
+        </Field>
       </Section>
     </div>
   );
