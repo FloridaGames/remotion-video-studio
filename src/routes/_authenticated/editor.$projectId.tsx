@@ -578,9 +578,44 @@ function EditorPage() {
         className={`grid min-h-0 flex-1 gap-4 ${
           viewMode === "storyboard"
             ? "lg:grid-cols-[280px_1fr_340px]"
-            : "lg:grid-cols-[1fr_340px]"
+            : elementsOpen
+              ? "lg:grid-cols-[220px_1fr_340px]"
+              : "lg:grid-cols-[44px_1fr_340px]"
         }`}
       >
+        {/* Elements palette (timeline mode) */}
+        {viewMode === "timeline" && (
+          <aside className="min-h-0 min-w-0 overflow-y-auto rounded-xl border border-border bg-card p-2">
+            <button
+              onClick={() => setElementsOpen((v) => !v)}
+              className="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground"
+              title={elementsOpen ? "Collapse elements" : "Expand elements"}
+            >
+              {elementsOpen ? (
+                <ChevronDown className="h-3 w-3" />
+              ) : (
+                <ChevronRight className="h-3 w-3" />
+              )}
+              {elementsOpen && <span>Elements</span>}
+            </button>
+            {elementsOpen && (
+              <div className="mt-1 space-y-1">
+                {(Object.keys(SCENE_TEMPLATE_LABEL) as SceneType[]).map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => addScene(t)}
+                    className="flex w-full items-center gap-2 rounded-md border border-border px-2 py-1.5 text-left text-xs hover:border-primary hover:bg-muted"
+                    title={`Add ${SCENE_TEMPLATE_LABEL[t]}`}
+                  >
+                    <Plus className="h-3 w-3 shrink-0" />
+                    <span className="truncate">{SCENE_TEMPLATE_LABEL[t]}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </aside>
+        )}
+
         {/* Scene list with thumbnails (storyboard mode only) */}
         {viewMode === "storyboard" && (
         <aside className="min-h-0 min-w-0 overflow-y-auto rounded-xl border border-border bg-card p-3">
