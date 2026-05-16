@@ -542,21 +542,6 @@ export function Timeline({
                     onSelect(b.scene.id, b.startFrame);
                   }}
                 >
-                  <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-md">
-                    <Thumbnail
-                      component={MainComposition}
-                      inputProps={composition}
-                      durationInFrames={Math.max(1, totalFrames)}
-                      fps={fps}
-                      compositionWidth={width}
-                      compositionHeight={height}
-                      frameToDisplay={Math.min(
-                        totalFrames - 1,
-                        b.startFrame + Math.floor(b.scene.durationFrames / 2),
-                      )}
-                      style={{ width: "100%", height: "100%", opacity: 0.55 }}
-                    />
-                  </div>
                   <div className="pointer-events-none relative flex h-full flex-col justify-between p-1.5">
                     <div className="truncate text-[10px] font-semibold text-foreground drop-shadow">
                       {b.idx + 1}. {SCENE_TEMPLATE_LABEL[b.scene.type]}
@@ -589,7 +574,17 @@ export function Timeline({
               );
             })}
 
-            {/* Transition seam handles (between adjacent scenes) */}
+            {/* Playhead */}
+            <div
+              className="pointer-events-none absolute top-0 bottom-0 z-30 w-px bg-primary"
+              style={{ left: playheadLeft }}
+            >
+              <div className="absolute -top-1 -left-[5px] h-2 w-[11px] rounded-sm bg-primary" />
+            </div>
+          </div>
+
+          {/* Transition lane (below the clip track, like multi-track UX) */}
+          <div className="relative h-6 border-t border-border/40 bg-muted/20">
             {blocks.slice(0, -1).map((b) => {
               const t = b.scene.transitionAfter;
               const seamLeft = b.left + b.width;
@@ -598,14 +593,14 @@ export function Timeline({
                   <PopoverTrigger asChild>
                     <button
                       title={t ? `${TRANSITION_LABEL[t.kind]} ${(t.durationFrames / fps).toFixed(1)}s` : "Add transition"}
-                      className={`absolute top-1/2 z-30 -translate-x-1/2 -translate-y-1/2 rounded-full border text-[10px] font-bold leading-none ${
+                      className={`absolute top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border text-[10px] font-bold leading-none ${
                         t
-                          ? "h-5 w-5 border-primary bg-primary text-primary-foreground"
-                          : "h-4 w-4 border-border bg-background text-muted-foreground opacity-60 hover:opacity-100"
+                          ? "h-5 px-2 border-primary bg-primary text-primary-foreground"
+                          : "h-4 w-4 border-border bg-background text-muted-foreground opacity-70 hover:opacity-100"
                       }`}
                       style={{ left: seamLeft }}
                     >
-                      {t ? t.kind[0].toUpperCase() : "+"}
+                      {t ? TRANSITION_LABEL[t.kind] : "+"}
                     </button>
                   </PopoverTrigger>
                   <PopoverContent className="w-56 space-y-3 p-3" align="center">
@@ -664,14 +659,6 @@ export function Timeline({
                 </Popover>
               );
             })}
-
-            {/* Playhead */}
-            <div
-              className="pointer-events-none absolute top-0 bottom-0 z-30 w-px bg-primary"
-              style={{ left: playheadLeft }}
-            >
-              <div className="absolute -top-1 -left-[5px] h-2 w-[11px] rounded-sm bg-primary" />
-            </div>
           </div>
         </div>
       </div>
