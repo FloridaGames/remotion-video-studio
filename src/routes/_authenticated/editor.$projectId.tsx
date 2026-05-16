@@ -913,8 +913,8 @@ function EditorPage() {
                 onReorder={reorderTo}
                 onTrim={(id, durationFrames) => updateScene(id, { durationFrames })}
                 onSeek={seekToFrame}
-                onTransitionChange={(id, transitionAfter) =>
-                  updateScene(id, { transitionAfter } as any)
+                onTransitionChange={(id, transitionBefore) =>
+                  updateScene(id, { transitionBefore, transitionAfter: undefined } as any)
                 }
                 onMoveClip={moveClip}
               />
