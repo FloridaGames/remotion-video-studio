@@ -582,7 +582,7 @@ function EditorPage() {
       >
         {/* Scene list with thumbnails (storyboard mode only) */}
         {viewMode === "storyboard" && (
-        <aside className="min-w-0 rounded-xl border border-border bg-card p-3">
+        <aside className="min-h-0 min-w-0 overflow-y-auto rounded-xl border border-border bg-card p-3">
           <div className="mb-2 px-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Scenes
           </div>
@@ -827,7 +827,7 @@ function EditorPage() {
         </section>
 
         {/* Inspector */}
-        <aside className="min-w-0 rounded-xl border border-border bg-card p-4">
+        <aside className="min-h-0 min-w-0 overflow-y-auto rounded-xl border border-border bg-card p-4">
           {selected ? (
             <Inspector
               scene={selected}
