@@ -1182,33 +1182,30 @@ function Inspector({
       </Section>
 
       <Section title="Timing">
-        <Field label={`Duration: ${(scene.durationFrames / FPS).toFixed(1)}s`}>
-          <Slider
-            min={30}
-            max={18000}
-            step={15}
-            value={[scene.durationFrames]}
-            onValueChange={([v]) => onChange({ durationFrames: v })}
-          />
-        </Field>
-        <Field label={`Fade in: ${((scene.fadeInFrames ?? 0) / FPS).toFixed(2)}s`}>
-          <Slider
-            min={0}
-            max={Math.min(scene.durationFrames, 180)}
-            step={3}
-            value={[scene.fadeInFrames ?? 0]}
-            onValueChange={([v]) => onChange({ fadeInFrames: v })}
-          />
-        </Field>
-        <Field label={`Fade out: ${((scene.fadeOutFrames ?? 0) / FPS).toFixed(2)}s`}>
-          <Slider
-            min={0}
-            max={Math.min(scene.durationFrames, 180)}
-            step={3}
-            value={[scene.fadeOutFrames ?? 0]}
-            onValueChange={([v]) => onChange({ fadeOutFrames: v })}
-          />
-        </Field>
+        <DurationField
+          label="Duration"
+          valueFrames={scene.durationFrames}
+          minFrames={30}
+          maxFrames={18000}
+          stepFrames={15}
+          onChange={(v) => onChange({ durationFrames: v })}
+        />
+        <DurationField
+          label="Fade in"
+          valueFrames={scene.fadeInFrames ?? 0}
+          minFrames={0}
+          maxFrames={Math.min(scene.durationFrames, 180)}
+          stepFrames={3}
+          onChange={(v) => onChange({ fadeInFrames: v })}
+        />
+        <DurationField
+          label="Fade out"
+          valueFrames={scene.fadeOutFrames ?? 0}
+          minFrames={0}
+          maxFrames={Math.min(scene.durationFrames, 180)}
+          stepFrames={3}
+          onChange={(v) => onChange({ fadeOutFrames: v })}
+        />
       </Section>
     </div>
   );
