@@ -1182,33 +1182,30 @@ function Inspector({
       </Section>
 
       <Section title="Timing">
-        <Field label={`Duration: ${(scene.durationFrames / FPS).toFixed(1)}s`}>
-          <Slider
-            min={30}
-            max={18000}
-            step={15}
-            value={[scene.durationFrames]}
-            onValueChange={([v]) => onChange({ durationFrames: v })}
-          />
-        </Field>
-        <Field label={`Fade in: ${((scene.fadeInFrames ?? 0) / FPS).toFixed(2)}s`}>
-          <Slider
-            min={0}
-            max={Math.min(scene.durationFrames, 180)}
-            step={3}
-            value={[scene.fadeInFrames ?? 0]}
-            onValueChange={([v]) => onChange({ fadeInFrames: v })}
-          />
-        </Field>
-        <Field label={`Fade out: ${((scene.fadeOutFrames ?? 0) / FPS).toFixed(2)}s`}>
-          <Slider
-            min={0}
-            max={Math.min(scene.durationFrames, 180)}
-            step={3}
-            value={[scene.fadeOutFrames ?? 0]}
-            onValueChange={([v]) => onChange({ fadeOutFrames: v })}
-          />
-        </Field>
+        <DurationField
+          label="Duration"
+          valueFrames={scene.durationFrames}
+          minFrames={30}
+          maxFrames={18000}
+          stepFrames={15}
+          onChange={(v) => onChange({ durationFrames: v })}
+        />
+        <DurationField
+          label="Fade in"
+          valueFrames={scene.fadeInFrames ?? 0}
+          minFrames={0}
+          maxFrames={Math.min(scene.durationFrames, 180)}
+          stepFrames={3}
+          onChange={(v) => onChange({ fadeInFrames: v })}
+        />
+        <DurationField
+          label="Fade out"
+          valueFrames={scene.fadeOutFrames ?? 0}
+          minFrames={0}
+          maxFrames={Math.min(scene.durationFrames, 180)}
+          stepFrames={3}
+          onChange={(v) => onChange({ fadeOutFrames: v })}
+        />
       </Section>
     </div>
   );
@@ -1317,6 +1314,76 @@ function VideoField({
           </Button>
         )}
       </div>
+    </div>
+  );
+}
+
+function DurationField({
+  label,
+  valueFrames,
+  minFrames,
+  maxFrames,
+  stepFrames,
+  onChange,
+}: {
+  label: string;
+  valueFrames: number;
+  minFrames: number;
+  maxFrames: number;
+  stepFrames: number;
+  onChange: (frames: number) => void;
+}) {
+  const seconds = valueFrames / FPS;
+  const minSec = minFrames / FPS;
+  const maxSec = maxFrames / FPS;
+  const stepSec = stepFrames / FPS;
+
+  const [inputValue, setInputValue] = useState(String(seconds.toFixed(label === "Duration" ? 1 : 2)));
+
+  useEffect(() => {
+    setInputValue(String(seconds.toFixed(label === "Duration" ? 1 : 2)));
+  }, [seconds, label]);
+
+  const clamp = (v: number) => Math.max(minFrames, Math.min(maxFrames, Math.round(v / stepFrames) * stepFrames));
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between gap-2">
+        <Label className="text-xs">{label}</Label>
+        <div className="flex items-center gap-1">
+          <Input
+            type="number"
+            min={minSec}
+            max={maxSec}
+            step={stepSec}
+            value={inputValue}
+            onChange={(e) => {
+              setInputValue(e.target.value);
+              const n = parseFloat(e.target.value);
+              if (!Number.isNaN(n)) {
+                onChange(clamp(Math.round(n * FPS)));
+              }
+            }}
+            onBlur={() => {
+              const n = parseFloat(inputValue);
+              if (!Number.isNaN(n)) {
+                const clamped = clamp(Math.round(n * FPS));
+                onChange(clamped);
+              }
+              setInputValue(String(seconds.toFixed(label === "Duration" ? 1 : 2)));
+            }}
+            className="h-7 w-20 text-right text-xs"
+          />
+          <span className="text-[10px] text-muted-foreground">s</span>
+        </div>
+      </div>
+      <Slider
+        min={minFrames}
+        max={maxFrames}
+        step={stepFrames}
+        value={[valueFrames]}
+        onValueChange={([v]) => onChange(clamp(v))}
+      />
     </div>
   );
 }
