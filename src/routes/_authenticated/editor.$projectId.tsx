@@ -667,8 +667,8 @@ function EditorPage() {
         )}
 
         {/* Player + transport */}
-        <section className="flex min-w-0 flex-col gap-3">
-        <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-3">
+        <section className="flex min-h-0 min-w-0 flex-col gap-3 overflow-hidden">
+        <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden rounded-xl border border-border bg-card p-3">
           {/* Toolbar above player */}
           <div className="flex items-center justify-between gap-2 text-xs">
             <div className="flex items-center gap-2">
@@ -710,7 +710,7 @@ function EditorPage() {
           </div>
 
           {/* Player */}
-          <div className="flex items-center justify-center overflow-auto rounded-lg bg-muted/40 p-2">
+          <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto rounded-lg bg-muted/40 p-2">
             {scenes.length === 0 ? (
               <div className="flex aspect-video w-full items-center justify-center text-muted-foreground">
                 Add a scene to get started
@@ -750,7 +750,7 @@ function EditorPage() {
 
           {/* Transport bar */}
           {scenes.length > 0 && (
-            <div className="space-y-2">
+            <div className="shrink-0 space-y-2">
               {/* Scrub */}
               <div className="relative h-2 w-full">
                 <input
