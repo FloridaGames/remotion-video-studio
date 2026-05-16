@@ -95,6 +95,7 @@ function EditorPage() {
   const [zoom, setZoom] = useState<(typeof ZOOM_OPTIONS)[number]["value"]>("fit");
   const [showSafe, setShowSafe] = useState(false);
   const [viewMode, setViewMode] = useState<"timeline" | "storyboard">("timeline");
+  const [timelineOpen, setTimelineOpen] = useState(true);
 
   const audioUrl = useSignedUrl("video-audio", audioPath);
 
