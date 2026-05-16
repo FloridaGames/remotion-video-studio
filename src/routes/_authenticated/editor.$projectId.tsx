@@ -487,12 +487,17 @@ function EditorPage() {
   // Player container styling for zoom
   const playerContainerStyle: React.CSSProperties =
     zoom === "fit"
-      ? { width: "100%", aspectRatio: `${width} / ${height}` }
+      ? {
+          aspectRatio: `${width} / ${height}`,
+          width: "100%",
+          maxWidth: "100%",
+          maxHeight: "100%",
+        }
       : { width: width * Number(zoom), aspectRatio: `${width} / ${height}` };
 
   return (
-    <main className="mx-auto max-w-[1600px] px-4 py-6">
-      <div className="mb-4 flex items-center justify-between gap-4">
+    <main className="mx-auto flex h-[calc(100dvh-65px)] max-w-[1600px] flex-col gap-3 px-4 py-3">
+      <div className="flex shrink-0 items-center justify-between gap-4">
         <Input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
@@ -569,7 +574,7 @@ function EditorPage() {
       </div>
 
       <div
-        className={`grid gap-4 ${
+        className={`grid min-h-0 flex-1 gap-4 ${
           viewMode === "storyboard"
             ? "lg:grid-cols-[280px_1fr_340px]"
             : "lg:grid-cols-[1fr_340px]"
