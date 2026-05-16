@@ -15,7 +15,7 @@ import {
   TRANSITION_LABEL,
 } from "@/remotion/types";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { X } from "lucide-react";
+import { X, ZoomIn, ZoomOut, Maximize2 } from "lucide-react";
 
 type Props = {
   scenes: Scene[];
@@ -25,6 +25,7 @@ type Props = {
   height: number;
   frame: number;
   selectedId: string | null;
+  /** Initial pixels-per-second; user can zoom inside the timeline. */
   pxPerSecond?: number;
   mode?: ProjectMode;
   onSelect: (id: string, startFrame: number) => void;
@@ -40,6 +41,51 @@ const SNAP_SECONDS = 0.5;
 const MIN_SECONDS = 0.5;
 const MULTI_TRACKS = [2, 1] as const; // top-to-bottom: V2 (overlay), V1 (main)
 const MULTI_LANE_HEIGHT = 64;
+const MIN_PX_PER_SEC = 8;
+const MAX_PX_PER_SEC = 400;
+
+function ZoomControls({
+  pxPerSecond,
+  fitMode,
+  onZoomOut,
+  onZoomIn,
+  onFit,
+}: {
+  pxPerSecond: number;
+  fitMode: boolean;
+  onZoomOut: () => void;
+  onZoomIn: () => void;
+  onFit: () => void;
+}) {
+  return (
+    <div className="flex items-center gap-0.5 rounded-md border border-border bg-background p-0.5">
+      <button
+        onClick={onZoomOut}
+        className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+        title="Zoom out"
+      >
+        <ZoomOut className="h-3 w-3" />
+      </button>
+      <span className="min-w-[3.5rem] text-center font-mono text-[10px] tabular-nums text-muted-foreground">
+        {Math.round(pxPerSecond)} px/s
+      </span>
+      <button
+        onClick={onZoomIn}
+        className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+        title="Zoom in"
+      >
+        <ZoomIn className="h-3 w-3" />
+      </button>
+      <button
+        onClick={onFit}
+        className={`rounded p-1 ${fitMode ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
+        title="Fit to width"
+      >
+        <Maximize2 className="h-3 w-3" />
+      </button>
+    </div>
+  );
+}
 
 export function Timeline({
   scenes,
@@ -49,7 +95,7 @@ export function Timeline({
   height,
   frame,
   selectedId,
-  pxPerSecond = 80,
+  pxPerSecond: pxPerSecondProp = 80,
   mode = "single",
   onSelect,
   onReorder,
@@ -59,9 +105,35 @@ export function Timeline({
   onMoveClip,
 }: Props) {
   const trackRef = useRef<HTMLDivElement | null>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const [pxPerSecond, setPxPerSecond] = useState<number>(pxPerSecondProp);
+  const [fitMode, setFitMode] = useState<boolean>(false);
 
   const totalFrames = useMemo(() => totalDurationFrames(scenes, mode), [scenes, mode]);
   const totalSeconds = totalFrames / fps;
+
+  // Fit-to-width: observe scroll container width and recompute pxPerSecond.
+  useEffect(() => {
+    if (!fitMode) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    const recompute = () => {
+      const w = el.clientWidth;
+      if (w <= 0 || totalSeconds <= 0) return;
+      // Leave ~24px right padding so last clip isn't flush.
+      const next = Math.max(MIN_PX_PER_SEC, Math.min(MAX_PX_PER_SEC, (w - 24) / totalSeconds));
+      setPxPerSecond(next);
+    };
+    recompute();
+    const ro = new ResizeObserver(recompute);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [fitMode, totalSeconds]);
+
+  const zoomBy = (factor: number) => {
+    setFitMode(false);
+    setPxPerSecond((p) => Math.max(MIN_PX_PER_SEC, Math.min(MAX_PX_PER_SEC, p * factor)));
+  };
 
   const starts = useMemo(() => {
     const arr: number[] = [];
@@ -233,11 +305,20 @@ export function Timeline({
           <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Timeline · Multi-track
           </div>
-          <div className="text-[10px] text-muted-foreground">
-            Drag horizontally to reposition · Drag between lanes to change track · Drag right edge to trim
+          <div className="flex items-center gap-2">
+            <span className="hidden text-[10px] text-muted-foreground md:inline">
+              Drag to reposition · between lanes to change track · right edge to trim
+            </span>
+            <ZoomControls
+              pxPerSecond={pxPerSecond}
+              fitMode={fitMode}
+              onZoomOut={() => zoomBy(1 / 1.4)}
+              onZoomIn={() => zoomBy(1.4)}
+              onFit={() => setFitMode((v) => !v)}
+            />
           </div>
         </div>
-        <div className="overflow-x-auto" ref={trackRef}>
+        <div className="overflow-x-auto" ref={(el) => { trackRef.current = el; scrollRef.current = el; }}>
           <div className="relative" style={{ width: trackWidth }}>
             <div
               onClick={rulerSeek}
@@ -354,11 +435,20 @@ export function Timeline({
         <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Timeline
         </div>
-        <div className="text-[10px] text-muted-foreground">
-          Drag block to reorder · Drag right edge to trim · Click seam (○) to add transition
+        <div className="flex items-center gap-2">
+          <span className="hidden text-[10px] text-muted-foreground md:inline">
+            Drag to reorder · right edge to trim · seam (○) for transition
+          </span>
+          <ZoomControls
+            pxPerSecond={pxPerSecond}
+            fitMode={fitMode}
+            onZoomOut={() => zoomBy(1 / 1.4)}
+            onZoomIn={() => zoomBy(1.4)}
+            onFit={() => setFitMode((v) => !v)}
+          />
         </div>
       </div>
-      <div className="overflow-x-auto" ref={trackRef}>
+      <div className="overflow-x-auto" ref={(el) => { trackRef.current = el; scrollRef.current = el; }}>
         <div className="relative" style={{ width: trackWidth }}>
           {/* Ruler */}
           <div
