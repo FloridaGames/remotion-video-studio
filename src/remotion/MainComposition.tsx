@@ -13,6 +13,7 @@ import { CinematicTitleScene } from "./scenes/CinematicTitleScene";
 import { SplitVideoScene } from "./scenes/SplitVideoScene";
 import { LowerThirdScene } from "./scenes/LowerThirdScene";
 import { QuoteVideoScene } from "./scenes/QuoteVideoScene";
+import { VideoOnlyScene } from "./scenes/VideoOnlyScene";
 
 function SceneInner({ scene }: { scene: Scene }) {
   switch (scene.type) {
@@ -32,6 +33,8 @@ function SceneInner({ scene }: { scene: Scene }) {
       return <LowerThirdScene {...scene} />;
     case "quote-video":
       return <QuoteVideoScene {...scene} />;
+    case "video-only":
+      return <VideoOnlyScene {...scene} />;
   }
 }
 

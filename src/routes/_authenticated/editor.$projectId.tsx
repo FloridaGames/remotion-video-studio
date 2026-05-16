@@ -96,6 +96,7 @@ function EditorPage() {
   const [showSafe, setShowSafe] = useState(false);
   const [viewMode, setViewMode] = useState<"timeline" | "storyboard">("timeline");
   const [timelineOpen, setTimelineOpen] = useState(true);
+  const [elementsOpen, setElementsOpen] = useState(true);
 
   const audioUrl = useSignedUrl("video-audio", audioPath);
 
@@ -577,9 +578,44 @@ function EditorPage() {
         className={`grid min-h-0 flex-1 gap-4 ${
           viewMode === "storyboard"
             ? "lg:grid-cols-[280px_1fr_340px]"
-            : "lg:grid-cols-[1fr_340px]"
+            : elementsOpen
+              ? "lg:grid-cols-[220px_1fr_340px]"
+              : "lg:grid-cols-[44px_1fr_340px]"
         }`}
       >
+        {/* Elements palette (timeline mode) */}
+        {viewMode === "timeline" && (
+          <aside className="min-h-0 min-w-0 overflow-y-auto rounded-xl border border-border bg-card p-2">
+            <button
+              onClick={() => setElementsOpen((v) => !v)}
+              className="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground"
+              title={elementsOpen ? "Collapse elements" : "Expand elements"}
+            >
+              {elementsOpen ? (
+                <ChevronDown className="h-3 w-3" />
+              ) : (
+                <ChevronRight className="h-3 w-3" />
+              )}
+              {elementsOpen && <span>Elements</span>}
+            </button>
+            {elementsOpen && (
+              <div className="mt-1 space-y-1">
+                {(Object.keys(SCENE_TEMPLATE_LABEL) as SceneType[]).map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => addScene(t)}
+                    className="flex w-full items-center gap-2 rounded-md border border-border px-2 py-1.5 text-left text-xs hover:border-primary hover:bg-muted"
+                    title={`Add ${SCENE_TEMPLATE_LABEL[t]}`}
+                  >
+                    <Plus className="h-3 w-3 shrink-0" />
+                    <span className="truncate">{SCENE_TEMPLATE_LABEL[t]}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </aside>
+        )}
+
         {/* Scene list with thumbnails (storyboard mode only) */}
         {viewMode === "storyboard" && (
         <aside className="min-h-0 min-w-0 overflow-y-auto rounded-xl border border-border bg-card p-3">
@@ -842,37 +878,22 @@ function EditorPage() {
 
       {/* Bottom dock: timeline (always visible header, collapsible body) */}
       {viewMode === "timeline" && (
-        <div className="flex shrink-0 flex-col gap-2">
-          <div className="flex items-center justify-between gap-2 rounded-xl border border-border bg-card px-3 py-2">
-            <button
-              onClick={() => setTimelineOpen((v) => !v)}
-              className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground"
-              title={timelineOpen ? "Collapse timeline" : "Expand timeline"}
-            >
-              {timelineOpen ? (
-                <ChevronDown className="h-3 w-3" />
-              ) : (
-                <ChevronUp className="h-3 w-3" />
-              )}
-              Timeline
-            </button>
-            <div className="flex flex-wrap items-center gap-1">
-              <span className="mr-1 text-[10px] uppercase tracking-wider text-muted-foreground">
-                Add
-              </span>
-              {(Object.keys(SCENE_TEMPLATE_LABEL) as SceneType[]).map((t) => (
-                <button
-                  key={t}
-                  onClick={() => addScene(t)}
-                  className="flex items-center gap-1 rounded-md border border-border px-2 py-0.5 text-[11px] hover:border-primary hover:bg-muted"
-                >
-                  <Plus className="h-3 w-3" /> {SCENE_TEMPLATE_LABEL[t]}
-                </button>
-              ))}
-            </div>
-          </div>
+        <div className="flex shrink-0 flex-col overflow-hidden rounded-xl border border-border bg-card">
+          <button
+            onClick={() => setTimelineOpen((v) => !v)}
+            className="flex items-center gap-1.5 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground"
+            title={timelineOpen ? "Collapse timeline" : "Expand timeline"}
+          >
+            {timelineOpen ? (
+              <ChevronDown className="h-3 w-3" />
+            ) : (
+              <ChevronUp className="h-3 w-3" />
+            )}
+            Timeline
+          </button>
           {timelineOpen && scenes.length > 0 && (
-            <Timeline
+            <div className="border-t border-border">
+              <Timeline
                 scenes={scenes}
                 composition={composition}
                 fps={fps}
@@ -893,6 +914,7 @@ function EditorPage() {
                 }
                 onMoveClip={moveClip}
               />
+            </div>
           )}
         </div>
       )}
@@ -1088,6 +1110,34 @@ function Inspector({
                 value={scene.attribution}
                 onChange={(e) => onChange({ attribution: e.target.value })}
               />
+            </Field>
+          </>
+        )}
+        {scene.type === "video-only" && (
+          <>
+            <VideoField
+              url={scene.videoUrl}
+              onPick={(videoUrl, durationFrames) =>
+                onChange(durationFrames ? { videoUrl, durationFrames } : { videoUrl })
+              }
+            />
+            <Field label="Fit">
+              <div className="flex gap-2">
+                {(["cover", "contain"] as const).map((f) => (
+                  <button
+                    key={f}
+                    type="button"
+                    onClick={() => onChange({ fit: f })}
+                    className={`flex-1 rounded-md border px-3 py-1.5 text-sm capitalize ${
+                      (scene.fit ?? "cover") === f
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border hover:border-primary"
+                    }`}
+                  >
+                    {f}
+                  </button>
+                ))}
+              </div>
             </Field>
           </>
         )}
