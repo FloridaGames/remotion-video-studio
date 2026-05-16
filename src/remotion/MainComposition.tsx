@@ -5,6 +5,7 @@ import { slide } from "@remotion/transitions/slide";
 import { wipe } from "@remotion/transitions/wipe";
 import { flip } from "@remotion/transitions/flip";
 import type { ProjectComposition, Scene, TransitionKind } from "./types";
+import { transitionIntoScene } from "./types";
 import { TitleScene } from "./scenes/TitleScene";
 import { TalkingPointScene } from "./scenes/TalkingPointScene";
 import { ImageCaptionScene } from "./scenes/ImageCaptionScene";
@@ -118,7 +119,7 @@ export function MainComposition({ scenes, audioUrl, mode }: ProjectComposition) 
             const nextStart = next.startFrame ?? 0;
             const nextDur = Math.max(1, next.durationFrames);
             const gap = nextStart - (curStart + dur);
-            const t = s.transitionAfter;
+            const t = next.transitionBefore ?? s.transitionAfter;
             if (gap > 0) {
               items.push(
                 <TransitionSeries.Sequence
@@ -163,7 +164,7 @@ export function MainComposition({ scenes, audioUrl, mode }: ProjectComposition) 
               <RenderScene scene={s} />
             </TransitionSeries.Sequence>,
           ];
-          const t = s.transitionAfter;
+          const t = transitionIntoScene(scenes, i + 1);
           if (t && i < scenes.length - 1) {
             const next = Math.max(1, scenes[i + 1].durationFrames);
             const maxOverlap = Math.max(1, Math.min(dur, next) - 1);
