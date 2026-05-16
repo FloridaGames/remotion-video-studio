@@ -89,6 +89,12 @@ export type QuoteVideoScene = SceneBase & {
   attribution: string;
 };
 
+export type VideoOnlyScene = SceneBase & {
+  type: "video-only";
+  videoUrl: string;
+  fit?: "cover" | "contain";
+};
+
 export type Scene =
   | TitleScene
   | TalkingPointScene
@@ -97,7 +103,8 @@ export type Scene =
   | CinematicTitleScene
   | SplitVideoScene
   | LowerThirdScene
-  | QuoteVideoScene;
+  | QuoteVideoScene
+  | VideoOnlyScene;
 
 export type SceneType = Scene["type"];
 
@@ -255,6 +262,15 @@ export function makeScene(type: SceneType): Scene {
         quote: "Education is the most powerful weapon which you can use to change the world.",
         attribution: "Nelson Mandela",
       };
+    case "video-only":
+      return {
+        id,
+        type: "video-only",
+        durationFrames: 90,
+        accent: "marine",
+        videoUrl: "",
+        fit: "cover",
+      };
   }
 }
 
@@ -267,4 +283,5 @@ export const SCENE_TEMPLATE_LABEL: Record<SceneType, string> = {
   "split-video": "Split video + text",
   "lower-third": "Lower-third over video",
   "quote-video": "Quote over video",
+  "video-only": "Video only",
 };
