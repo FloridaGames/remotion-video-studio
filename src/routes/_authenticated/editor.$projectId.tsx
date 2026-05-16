@@ -96,6 +96,7 @@ function EditorPage() {
   const [showSafe, setShowSafe] = useState(false);
   const [viewMode, setViewMode] = useState<"timeline" | "storyboard">("timeline");
   const [timelineOpen, setTimelineOpen] = useState(true);
+  const [elementsOpen, setElementsOpen] = useState(true);
 
   const audioUrl = useSignedUrl("video-audio", audioPath);
 
