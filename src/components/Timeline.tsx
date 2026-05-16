@@ -1,6 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { MainComposition } from "@/remotion/MainComposition";
-import { Thumbnail } from "@remotion/player";
 import type {
   ProjectComposition,
   ProjectMode,
