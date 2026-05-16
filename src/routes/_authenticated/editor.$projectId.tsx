@@ -842,8 +842,8 @@ function EditorPage() {
 
       {/* Bottom dock: timeline (always visible header, collapsible body) */}
       {viewMode === "timeline" && (
-        <div className="shrink-0 rounded-xl border border-border bg-card">
-          <div className="flex items-center justify-between gap-2 px-3 py-2">
+        <div className="flex shrink-0 flex-col gap-2">
+          <div className="flex items-center justify-between gap-2 rounded-xl border border-border bg-card px-3 py-2">
             <button
               onClick={() => setTimelineOpen((v) => !v)}
               className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground"
@@ -872,8 +872,7 @@ function EditorPage() {
             </div>
           </div>
           {timelineOpen && scenes.length > 0 && (
-            <div className="border-t border-border p-2">
-              <Timeline
+            <Timeline
                 scenes={scenes}
                 composition={composition}
                 fps={fps}
@@ -894,7 +893,6 @@ function EditorPage() {
                 }
                 onMoveClip={moveClip}
               />
-            </div>
           )}
         </div>
       )}
