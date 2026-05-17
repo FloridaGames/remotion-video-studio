@@ -15,7 +15,6 @@ import {
   makeScene,
   totalDurationFrames,
   normalizeScenes,
-  ANIMATABLE_DEFAULTS,
   ANIMATABLE_LABEL,
   type AnimatableProperty,
   type EasingKind,
@@ -52,7 +51,7 @@ import {
   ChevronDown,
   ChevronUp,
   Diamond,
-  X,
+  Clock,
 } from "lucide-react";
 import { StockVideoPicker } from "@/components/StockVideoPicker";
 import { Timeline } from "@/components/Timeline";
@@ -490,11 +489,12 @@ function EditorPage() {
   }, [togglePlay, stepFrames, undo, redo, selectedId, duplicateScene, removeScene, move, fps]);
 
   async function onUploadImage(file: File) {
-    if (!user || !selected || selected.type !== "image-caption") return;
+    if (!user || !selected) return;
+    if (selected.type !== "image-caption" && selected.type !== "image") return;
     try {
       const path = await uploadToBucket("video-images", user.id, file);
       const { data } = await supabase.storage.from("video-images").createSignedUrl(path, 60 * 60);
-      updateScene(selected.id, { imageUrl: data?.signedUrl ?? "" });
+      updateScene(selected.id, { imageUrl: data?.signedUrl ?? "" } as Partial<Scene>);
       toast.success("Image uploaded");
     } catch (e) {
       toast.error((e as Error).message);
@@ -901,6 +901,7 @@ function EditorPage() {
               onUploadImage={onUploadImage}
               fps={fps}
               localFrame={localFrame}
+              onSeekLocal={(lf) => seekToFrame(selectedSceneStart + lf)}
             />
           ) : (
             <p className="text-sm text-muted-foreground">Select a scene to edit it.</p>
@@ -980,12 +981,14 @@ function Inspector({
   onUploadImage,
   fps,
   localFrame,
+  onSeekLocal,
 }: {
   scene: Scene;
   onChange: (patch: Partial<Scene>) => void;
   onUploadImage: (f: File) => void;
   fps: number;
   localFrame: number;
+  onSeekLocal: (localFrame: number) => void;
 }) {
   return (
     <div className="space-y-1">
@@ -1177,6 +1180,194 @@ function Inspector({
             </Field>
           </>
         )}
+        {scene.type === "image" && (
+          <>
+            <Field label="Image (PNG keeps transparency)">
+              <label className="flex cursor-pointer items-center justify-center rounded-md border border-dashed border-border p-4 text-sm text-muted-foreground hover:border-primary">
+                {scene.imageUrl ? "Replace image" : "Upload PNG / JPG"}
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                  className="hidden"
+                  onChange={(e) => e.target.files?.[0] && onUploadImage(e.target.files[0])}
+                />
+              </label>
+            </Field>
+            <Field label="Fit">
+              <div className="flex gap-2">
+                {(["contain", "cover"] as const).map((f) => (
+                  <button
+                    key={f}
+                    type="button"
+                    onClick={() => onChange({ fit: f })}
+                    className={`flex-1 rounded-md border px-3 py-1.5 text-sm capitalize ${
+                      (scene.fit ?? "contain") === f
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border hover:border-primary"
+                    }`}
+                  >
+                    {f}
+                  </button>
+                ))}
+              </div>
+            </Field>
+            <Field label={`Box size (${Math.round((scene.size ?? 0.5) * 100)}% of canvas)`}>
+              <Slider
+                min={10}
+                max={100}
+                step={5}
+                value={[Math.round((scene.size ?? 0.5) * 100)]}
+                onValueChange={([v]) => onChange({ size: v / 100 })}
+              />
+            </Field>
+            <p className="text-[10px] text-muted-foreground">
+              Tip: use Properties → keyframes (X, Y, Scale, Rotation, Opacity) to position and animate this image inside the frame.
+            </p>
+          </>
+        )}
+        {scene.type === "text" && (
+          <>
+            <Field label="Text">
+              <Textarea
+                rows={3}
+                value={scene.text}
+                onChange={(e) => onChange({ text: e.target.value })}
+              />
+            </Field>
+            <div className="grid grid-cols-2 gap-2">
+              <Field label="Font size">
+                <Input
+                  type="number"
+                  min={8}
+                  max={400}
+                  step={2}
+                  value={scene.fontSize}
+                  onChange={(e) => onChange({ fontSize: Math.max(8, Number(e.target.value) || 0) })}
+                />
+              </Field>
+              <Field label="Weight">
+                <select
+                  value={scene.fontWeight}
+                  onChange={(e) => onChange({ fontWeight: Number(e.target.value) })}
+                  className="h-9 w-full rounded-md border border-input bg-transparent px-2 text-sm"
+                >
+                  {[300, 400, 500, 600, 700, 800, 900].map((w) => (
+                    <option key={w} value={w}>
+                      {w}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            </div>
+            <Field label="Font family">
+              <select
+                value={scene.fontFamily ?? "Arial"}
+                onChange={(e) => onChange({ fontFamily: e.target.value })}
+                className="h-9 w-full rounded-md border border-input bg-transparent px-2 text-sm"
+              >
+                {[
+                  "Arial",
+                  "Helvetica",
+                  "Georgia",
+                  "Times New Roman",
+                  "Courier New",
+                  "Verdana",
+                  "Trebuchet MS",
+                  "Impact",
+                ].map((f) => (
+                  <option key={f} value={f}>
+                    {f}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <div className="grid grid-cols-2 gap-2">
+              <Field label="Color">
+                <input
+                  type="color"
+                  value={scene.color}
+                  onChange={(e) => onChange({ color: e.target.value })}
+                  className="h-9 w-full cursor-pointer rounded-md border border-input bg-transparent"
+                />
+              </Field>
+              <Field label="Line height">
+                <Input
+                  type="number"
+                  step={0.05}
+                  min={0.8}
+                  max={3}
+                  value={scene.lineHeight}
+                  onChange={(e) => onChange({ lineHeight: Number(e.target.value) || 1 })}
+                />
+              </Field>
+            </div>
+            <Field label="Align">
+              <div className="flex gap-2">
+                {(["left", "center", "right"] as const).map((a) => (
+                  <button
+                    key={a}
+                    type="button"
+                    onClick={() => onChange({ align: a })}
+                    className={`flex-1 rounded-md border px-3 py-1.5 text-sm capitalize ${
+                      scene.align === a
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border hover:border-primary"
+                    }`}
+                  >
+                    {a}
+                  </button>
+                ))}
+              </div>
+            </Field>
+            <Field label="Background box">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={!!scene.bgColor}
+                  onChange={(e) =>
+                    onChange({ bgColor: e.target.checked ? "#003366" : undefined })
+                  }
+                />
+                <input
+                  type="color"
+                  value={scene.bgColor ?? "#003366"}
+                  disabled={!scene.bgColor}
+                  onChange={(e) => onChange({ bgColor: e.target.value })}
+                  className="h-8 w-14 cursor-pointer rounded-md border border-input bg-transparent disabled:opacity-40"
+                />
+                <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                  <span>pad</span>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={200}
+                    value={scene.bgPaddingX}
+                    onChange={(e) =>
+                      onChange({ bgPaddingX: Math.max(0, Number(e.target.value) || 0) })
+                    }
+                    className="h-7 w-14 text-right text-xs"
+                    title="Horizontal padding"
+                  />
+                  <span>×</span>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={200}
+                    value={scene.bgPaddingY}
+                    onChange={(e) =>
+                      onChange({ bgPaddingY: Math.max(0, Number(e.target.value) || 0) })
+                    }
+                    className="h-7 w-14 text-right text-xs"
+                    title="Vertical padding"
+                  />
+                </div>
+              </div>
+            </Field>
+            <p className="text-[10px] text-muted-foreground">
+              Tip: use Properties → keyframes (X, Y, Scale, Rotation, Opacity) to position and animate this text inside the frame.
+            </p>
+          </>
+        )}
       </Section>
 
       <Section title="Style">
@@ -1250,6 +1441,7 @@ function Inspector({
           fps={fps}
           localFrame={localFrame}
           onChange={onChange}
+          onSeekLocal={onSeekLocal}
         />
       </Section>
     </div>
@@ -1455,11 +1647,13 @@ function PropertiesPanel({
   fps,
   localFrame,
   onChange,
+  onSeekLocal,
 }: {
   scene: Scene;
   fps: number;
   localFrame: number;
   onChange: (patch: Partial<Scene>) => void;
+  onSeekLocal: (localFrame: number) => void;
 }) {
   const kfs = scene.keyframes ?? [];
 
@@ -1471,29 +1665,65 @@ function PropertiesPanel({
     onChange({ transform });
   }
 
-  function addKeyframeAtPlayhead(prop: AnimatableProperty) {
-    const value = valueAt(scene, prop, localFrame);
-    // Replace any existing keyframe on the same frame, else insert.
-    const without = kfs.filter((k) => !(k.property === prop && k.frame === localFrame));
-    const next: Keyframe[] = [...without, { property: prop, frame: localFrame, value, easing: "linear" }];
+  /** Insert or update the keyframe for prop at the given local frame. */
+  function upsertKeyframe(prop: AnimatableProperty, frame: number, value: number) {
+    const f = Math.max(0, Math.min(scene.durationFrames, Math.round(frame)));
+    const without = kfs.filter((k) => !(k.property === prop && k.frame === f));
+    const existingEasing = kfs.find((k) => k.property === prop)?.easing ?? "linear";
+    const next: Keyframe[] = [
+      ...without,
+      { property: prop, frame: f, value, easing: existingEasing },
+    ];
     onChange({ keyframes: next });
   }
 
-  function updateKeyframe(idx: number, patch: Partial<Keyframe>) {
-    const next = kfs.map((k, i) => (i === idx ? { ...k, ...patch } : k));
+  /** AE-style stopwatch click: if no KFs → arm by seeding one at playhead; if KFs exist → clear all (disarm). */
+  function toggleStopwatch(prop: AnimatableProperty) {
+    const propKfs = sortedKfs(prop);
+    if (propKfs.length === 0) {
+      const v = valueAt(scene, prop, localFrame);
+      upsertKeyframe(prop, localFrame, v);
+      return;
+    }
+    // Disarm: clear KFs but keep the currently-shown value as the new base.
+    const live = valueAt(scene, prop, localFrame);
+    const transform = { ...(scene.transform ?? {}), [prop]: live };
+    const nextKfs = kfs.filter((k) => k.property !== prop);
+    onChange({ keyframes: nextKfs, transform });
+  }
+
+  /** Called when the user edits the value field. Armed → KF, not armed → base. */
+  function commitValue(prop: AnimatableProperty, value: number) {
+    if (Number.isNaN(value)) return;
+    const propKfs = sortedKfs(prop);
+    if (propKfs.length > 0) upsertKeyframe(prop, localFrame, value);
+    else setStatic(prop, value);
+  }
+
+  function moveKeyframe(prop: AnimatableProperty, oldFrame: number, newFrame: number) {
+    const f = Math.max(0, Math.min(scene.durationFrames, Math.round(newFrame)));
+    const idx = kfs.findIndex((k) => k.property === prop && k.frame === oldFrame);
+    if (idx < 0) return;
+    // Avoid collision: if another KF already lives at f, drop it.
+    const cleared = kfs.filter(
+      (k, i) => i === idx || !(k.property === prop && k.frame === f),
+    );
+    const next = cleared.map((k) =>
+      k.property === prop && k.frame === oldFrame ? { ...k, frame: f } : k,
+    );
     onChange({ keyframes: next });
   }
 
-  function removeKeyframe(idx: number) {
-    const next = kfs.filter((_, i) => i !== idx);
+  function removeKeyframeAt(prop: AnimatableProperty, frame: number) {
+    const next = kfs.filter((k) => !(k.property === prop && k.frame === frame));
     onChange({ keyframes: next });
   }
 
-  function clearProperty(prop: AnimatableProperty) {
-    const next = kfs.filter((k) => k.property !== prop);
-    const transform = { ...(scene.transform ?? {}) };
-    delete transform[prop];
-    onChange({ keyframes: next, transform });
+  function setKeyframeEasing(prop: AnimatableProperty, frame: number, easing: EasingKind) {
+    const next = kfs.map((k) =>
+      k.property === prop && k.frame === frame ? { ...k, easing } : k,
+    );
+    onChange({ keyframes: next });
   }
 
   function applyPreset(preset: PresetKey) {
@@ -1501,6 +1731,17 @@ function PropertiesPanel({
     const cleared = kfs.filter((k) => !props.includes(k.property));
     const added = buildPresetKeyframes(preset, scene.durationFrames, fps);
     onChange({ keyframes: [...cleared, ...added] });
+  }
+
+  function nearestKeyframe(prop: AnimatableProperty, dir: -1 | 1): number | null {
+    const list = sortedKfs(prop).map((k) => k.frame);
+    if (list.length === 0) return null;
+    if (dir === -1) {
+      const before = list.filter((f) => f < localFrame);
+      return before.length ? before[before.length - 1] : list[list.length - 1];
+    }
+    const after = list.filter((f) => f > localFrame);
+    return after.length ? after[0] : list[0];
   }
 
   return (
@@ -1536,121 +1777,275 @@ function PropertiesPanel({
           </div>
           {group.properties.map((prop) => {
             const propKfs = sortedKfs(prop);
-            const base = scene.transform?.[prop] ?? ANIMATABLE_DEFAULTS[prop];
+            const armed = propKfs.length > 0;
             const live = valueAt(scene, prop, localFrame);
+            const atKf = propKfs.find((k) => k.frame === localFrame);
             return (
-              <div key={prop} className="rounded-md border border-border p-2">
-                <div className="flex items-center justify-between gap-2">
-                  <Label className="text-[11px]">{ANIMATABLE_LABEL[prop]}</Label>
-                  <div className="flex items-center gap-1">
-                    <span className="font-mono text-[10px] text-muted-foreground">
-                      now {live.toFixed(2)}
-                    </span>
-                    <button
-                      onClick={() => addKeyframeAtPlayhead(prop)}
-                      title="Add keyframe at playhead"
-                      className={`rounded p-1 hover:bg-muted ${
-                        propKfs.length > 0
-                          ? "text-primary"
-                          : "text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
-                      <Diamond
-                        className="h-3 w-3"
-                        fill={propKfs.length > 0 ? "currentColor" : "none"}
-                      />
-                    </button>
-                    {(propKfs.length > 0 ||
-                      scene.transform?.[prop] !== undefined) && (
-                      <button
-                        onClick={() => clearProperty(prop)}
-                        title="Clear all keyframes for this property"
-                        className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-destructive"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-                <div className="mt-1 flex items-center gap-2">
-                  <Label className="w-10 text-[10px] text-muted-foreground">base</Label>
-                  <Input
-                    type="number"
-                    step={PROPERTY_STEP[prop]}
-                    value={base}
-                    onChange={(e) => {
-                      const n = parseFloat(e.target.value);
-                      if (!Number.isNaN(n)) setStatic(prop, n);
-                    }}
-                    className="h-6 flex-1 text-right text-[11px]"
-                  />
-                </div>
-                {propKfs.length > 0 && (
-                  <div className="mt-2 space-y-1">
-                    {propKfs.map((k) => {
-                      const realIdx = kfs.indexOf(k);
-                      return (
-                        <div
-                          key={realIdx + "-" + k.frame}
-                          className="flex items-center gap-1 rounded bg-muted/40 p-1 text-[10px]"
-                        >
-                          <Diamond className="h-2.5 w-2.5 text-primary" fill="currentColor" />
-                          <Input
-                            type="number"
-                            step={1}
-                            value={k.frame}
-                            onChange={(e) => {
-                              const n = parseInt(e.target.value, 10);
-                              if (!Number.isNaN(n))
-                                updateKeyframe(realIdx, {
-                                  frame: Math.max(0, Math.min(scene.durationFrames, n)),
-                                });
-                            }}
-                            className="h-5 w-12 text-right text-[10px]"
-                            title="Frame"
-                          />
-                          <span className="text-muted-foreground">f</span>
-                          <Input
-                            type="number"
-                            step={PROPERTY_STEP[prop]}
-                            value={k.value}
-                            onChange={(e) => {
-                              const n = parseFloat(e.target.value);
-                              if (!Number.isNaN(n)) updateKeyframe(realIdx, { value: n });
-                            }}
-                            className="h-5 flex-1 text-right text-[10px]"
-                            title="Value"
-                          />
-                          <select
-                            value={k.easing ?? "linear"}
-                            onChange={(e) =>
-                              updateKeyframe(realIdx, { easing: e.target.value as EasingKind })
-                            }
-                            className="h-5 rounded border border-border bg-background text-[10px]"
-                            title="Easing out of this keyframe"
-                          >
-                            <option value="linear">lin</option>
-                            <option value="ease-in">in</option>
-                            <option value="ease-out">out</option>
-                            <option value="ease-in-out">in-out</option>
-                          </select>
-                          <button
-                            onClick={() => removeKeyframe(realIdx)}
-                            className="rounded p-0.5 text-muted-foreground hover:text-destructive"
-                            title="Delete keyframe"
-                          >
-                            <Trash2 className="h-2.5 w-2.5" />
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
+              <PropertyRow
+                key={prop}
+                prop={prop}
+                duration={scene.durationFrames}
+                localFrame={localFrame}
+                armed={armed}
+                liveValue={live}
+                keyframes={propKfs}
+                onToggleStopwatch={() => toggleStopwatch(prop)}
+                onCommitValue={(v) => commitValue(prop, v)}
+                onSeekLocal={onSeekLocal}
+                onMoveKeyframe={(oldF, newF) => moveKeyframe(prop, oldF, newF)}
+                onRemoveKeyframe={(f) => removeKeyframeAt(prop, f)}
+                onSetKeyframeEasing={(f, e) => setKeyframeEasing(prop, f, e)}
+                onAddAt={(f) => upsertKeyframe(prop, f, valueAt(scene, prop, f))}
+                onJumpKf={(dir) => {
+                  const t = nearestKeyframe(prop, dir);
+                  if (t !== null) onSeekLocal(t);
+                }}
+                onAddRemoveAtPlayhead={() => {
+                  if (atKf) removeKeyframeAt(prop, localFrame);
+                  else upsertKeyframe(prop, localFrame, live);
+                }}
+                atKeyframe={!!atKf}
+              />
             );
           })}
         </div>
       ))}
+    </div>
+  );
+}
+
+function PropertyRow({
+  prop,
+  duration,
+  localFrame,
+  armed,
+  liveValue,
+  keyframes,
+  onToggleStopwatch,
+  onCommitValue,
+  onSeekLocal,
+  onMoveKeyframe,
+  onRemoveKeyframe,
+  onSetKeyframeEasing,
+  onAddAt,
+  onJumpKf,
+  onAddRemoveAtPlayhead,
+  atKeyframe,
+}: {
+  prop: AnimatableProperty;
+  duration: number;
+  localFrame: number;
+  armed: boolean;
+  liveValue: number;
+  keyframes: Keyframe[];
+  onToggleStopwatch: () => void;
+  onCommitValue: (v: number) => void;
+  onSeekLocal: (f: number) => void;
+  onMoveKeyframe: (oldFrame: number, newFrame: number) => void;
+  onRemoveKeyframe: (frame: number) => void;
+  onSetKeyframeEasing: (frame: number, e: EasingKind) => void;
+  onAddAt: (frame: number) => void;
+  onJumpKf: (dir: -1 | 1) => void;
+  onAddRemoveAtPlayhead: () => void;
+  atKeyframe: boolean;
+}) {
+  const step = PROPERTY_STEP[prop];
+  const [inputValue, setInputValue] = useState(liveValue.toFixed(2));
+  const [selectedKf, setSelectedKf] = useState<number | null>(null);
+  const laneRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    setInputValue(liveValue.toFixed(2));
+  }, [liveValue]);
+
+  const selectedKeyframe = keyframes.find((k) => k.frame === selectedKf) ?? null;
+
+  function laneToFrame(clientX: number): number {
+    const rect = laneRef.current?.getBoundingClientRect();
+    if (!rect) return 0;
+    const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    return Math.round(ratio * duration);
+  }
+
+  function onLaneClick(e: React.MouseEvent<HTMLDivElement>) {
+    // Click on the lane background → seek to that frame (AE-style scrub click).
+    onSeekLocal(laneToFrame(e.clientX));
+  }
+
+  function onLaneDoubleClick(e: React.MouseEvent<HTMLDivElement>) {
+    // Double-click empty lane → add KF at that frame.
+    e.stopPropagation();
+    onAddAt(laneToFrame(e.clientX));
+  }
+
+  function startDragKf(e: React.PointerEvent<HTMLButtonElement>, kfFrame: number) {
+    e.stopPropagation();
+    e.preventDefault();
+    (e.target as Element).setPointerCapture?.(e.pointerId);
+    let lastFrame = kfFrame;
+    const onMove = (ev: PointerEvent) => {
+      const f = laneToFrame(ev.clientX);
+      if (f !== lastFrame) {
+        onMoveKeyframe(lastFrame, f);
+        lastFrame = f;
+      }
+    };
+    const onUp = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  }
+
+  return (
+    <div className="rounded-md border border-border bg-card p-2">
+      <div className="flex items-center gap-1.5">
+        {/* Stopwatch */}
+        <button
+          onClick={onToggleStopwatch}
+          title={
+            armed
+              ? "Stopwatch ON — value edits create keyframes. Click to disarm and clear all keyframes."
+              : "Stopwatch OFF — click to start animating this property (creates a keyframe at the playhead)."
+          }
+          className={`flex h-6 w-6 shrink-0 items-center justify-center rounded ${
+            armed
+              ? "bg-primary/15 text-primary"
+              : "text-muted-foreground hover:bg-muted hover:text-foreground"
+          }`}
+        >
+          <Clock className="h-3 w-3" />
+        </button>
+        <Label className="flex-1 truncate text-[11px]">{ANIMATABLE_LABEL[prop]}</Label>
+        {/* Prev/Add/Next KF cluster */}
+        <button
+          onClick={() => onJumpKf(-1)}
+          disabled={keyframes.length === 0}
+          title="Previous keyframe"
+          className="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30"
+        >
+          <ChevronLeft className="h-3 w-3" />
+        </button>
+        <button
+          onClick={onAddRemoveAtPlayhead}
+          title={
+            atKeyframe
+              ? "Remove keyframe at playhead"
+              : "Add keyframe at playhead"
+          }
+          className={`rounded p-0.5 hover:bg-muted ${
+            atKeyframe ? "text-primary" : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <Diamond className="h-3 w-3" fill={atKeyframe ? "currentColor" : "none"} />
+        </button>
+        <button
+          onClick={() => onJumpKf(1)}
+          disabled={keyframes.length === 0}
+          title="Next keyframe"
+          className="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30"
+        >
+          <ChevronRight className="h-3 w-3" />
+        </button>
+        {/* Value input */}
+        <Input
+          type="number"
+          step={step}
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
+          onBlur={() => {
+            const n = parseFloat(inputValue);
+            if (!Number.isNaN(n)) onCommitValue(n);
+            else setInputValue(liveValue.toFixed(2));
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+          }}
+          className="h-6 w-20 text-right text-[11px]"
+          title={armed ? "Edit to create/update a keyframe at the playhead" : "Edit to set the base value"}
+        />
+      </div>
+
+      {/* Mini timeline lane */}
+      <div
+        ref={laneRef}
+        onClick={onLaneClick}
+        onDoubleClick={onLaneDoubleClick}
+        className="relative mt-2 h-5 cursor-crosshair select-none rounded bg-muted/50"
+        title="Click = seek · double-click = add keyframe · drag a diamond to retime"
+      >
+        {/* Playhead */}
+        <div
+          className="pointer-events-none absolute top-0 h-full w-px bg-primary"
+          style={{ left: `${(localFrame / Math.max(1, duration)) * 100}%` }}
+        />
+        {/* Keyframe diamonds */}
+        {keyframes.map((k) => {
+          const left = (k.frame / Math.max(1, duration)) * 100;
+          const isSel = selectedKf === k.frame;
+          return (
+            <button
+              key={k.frame}
+              onPointerDown={(e) => {
+                setSelectedKf(k.frame);
+                onSeekLocal(k.frame);
+                startDragKf(e, k.frame);
+              }}
+              onDoubleClick={(e) => {
+                e.stopPropagation();
+                onRemoveKeyframe(k.frame);
+                if (selectedKf === k.frame) setSelectedKf(null);
+              }}
+              title={`Frame ${k.frame} · value ${k.value.toFixed(2)} · double-click to delete`}
+              className={`absolute top-1/2 -translate-x-1/2 -translate-y-1/2 ${
+                isSel ? "scale-125" : ""
+              }`}
+              style={{ left: `${left}%` }}
+            >
+              <Diamond
+                className={`h-3 w-3 ${isSel ? "text-accent" : "text-primary"}`}
+                fill="currentColor"
+              />
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Selected-keyframe inline controls (easing) */}
+      {selectedKeyframe && (
+        <div className="mt-1.5 flex items-center justify-between gap-2 text-[10px] text-muted-foreground">
+          <span>
+            Selected KF · <span className="font-mono text-foreground">f{selectedKeyframe.frame}</span>{" "}
+            <span className="font-mono text-foreground">{selectedKeyframe.value.toFixed(2)}</span>
+          </span>
+          <div className="flex items-center gap-1">
+            <span>easing</span>
+            <select
+              value={selectedKeyframe.easing ?? "linear"}
+              onChange={(e) =>
+                onSetKeyframeEasing(selectedKeyframe.frame, e.target.value as EasingKind)
+              }
+              className="h-5 rounded border border-border bg-background text-[10px]"
+            >
+              <option value="linear">linear</option>
+              <option value="ease-in">ease-in</option>
+              <option value="ease-out">ease-out</option>
+              <option value="ease-in-out">ease-in-out</option>
+            </select>
+            <button
+              onClick={() => {
+                onRemoveKeyframe(selectedKeyframe.frame);
+                setSelectedKf(null);
+              }}
+              className="rounded p-0.5 hover:bg-muted hover:text-destructive"
+              title="Delete selected keyframe"
+            >
+              <Trash2 className="h-3 w-3" />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
