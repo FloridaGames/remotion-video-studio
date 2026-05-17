@@ -15,7 +15,19 @@ import {
   makeScene,
   totalDurationFrames,
   normalizeScenes,
+  ANIMATABLE_DEFAULTS,
+  ANIMATABLE_LABEL,
+  type AnimatableProperty,
+  type EasingKind,
+  type Keyframe,
 } from "@/remotion/types";
+import {
+  buildPresetKeyframes,
+  presetProperties,
+  PRESET_LABEL,
+  type PresetKey,
+  valueAt,
+} from "@/remotion/animation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -39,6 +51,8 @@ import {
   Copy,
   ChevronDown,
   ChevronUp,
+  Diamond,
+  X,
 } from "lucide-react";
 import { StockVideoPicker } from "@/components/StockVideoPicker";
 import { Timeline } from "@/components/Timeline";
