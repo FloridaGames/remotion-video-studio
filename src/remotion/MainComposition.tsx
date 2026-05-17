@@ -15,6 +15,8 @@ import { SplitVideoScene } from "./scenes/SplitVideoScene";
 import { LowerThirdScene } from "./scenes/LowerThirdScene";
 import { QuoteVideoScene } from "./scenes/QuoteVideoScene";
 import { VideoOnlyScene } from "./scenes/VideoOnlyScene";
+import { ImageElementScene } from "./scenes/ImageElementScene";
+import { TextElementScene } from "./scenes/TextElementScene";
 
 function SceneInner({ scene }: { scene: Scene }) {
   switch (scene.type) {
@@ -36,6 +38,10 @@ function SceneInner({ scene }: { scene: Scene }) {
       return <QuoteVideoScene {...scene} />;
     case "video-only":
       return <VideoOnlyScene {...scene} />;
+    case "image":
+      return <ImageElementScene {...scene} />;
+    case "text":
+      return <TextElementScene {...scene} />;
   }
 }
 

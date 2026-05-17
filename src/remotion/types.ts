@@ -154,6 +154,32 @@ export type VideoOnlyScene = SceneBase & {
   fit?: "cover" | "contain";
 };
 
+export type ImageElementScene = SceneBase & {
+  type: "image";
+  imageUrl: string;
+  /** How the image fits its half-canvas box. */
+  fit?: "contain" | "cover";
+  /** Intrinsic box size as a fraction of canvas height (0.1–1.0). Default 0.5. */
+  size?: number;
+};
+
+export type TextAlign = "left" | "center" | "right";
+
+export type TextElementScene = SceneBase & {
+  type: "text";
+  text: string;
+  fontFamily?: string;
+  fontSize: number;
+  fontWeight: number;
+  color: string;
+  align: TextAlign;
+  lineHeight: number;
+  /** Optional background box (lower-third style). Empty/undefined = no box. */
+  bgColor?: string;
+  bgPaddingX: number;
+  bgPaddingY: number;
+};
+
 export type Scene =
   | TitleScene
   | TalkingPointScene
@@ -163,7 +189,9 @@ export type Scene =
   | SplitVideoScene
   | LowerThirdScene
   | QuoteVideoScene
-  | VideoOnlyScene;
+  | VideoOnlyScene
+  | ImageElementScene
+  | TextElementScene;
 
 export type SceneType = Scene["type"];
 
@@ -352,6 +380,33 @@ export function makeScene(type: SceneType): Scene {
         videoUrl: "",
         fit: "cover",
       };
+    case "image":
+      return {
+        id,
+        type: "image",
+        durationFrames: 90,
+        accent: "marine",
+        imageUrl: "",
+        fit: "contain",
+        size: 0.5,
+      };
+    case "text":
+      return {
+        id,
+        type: "text",
+        durationFrames: 90,
+        accent: "marine",
+        text: "Your text here",
+        fontFamily: "Arial",
+        fontSize: 64,
+        fontWeight: 700,
+        color: "#ffffff",
+        align: "center",
+        lineHeight: 1.25,
+        bgColor: undefined,
+        bgPaddingX: 24,
+        bgPaddingY: 12,
+      };
   }
 }
 
@@ -365,4 +420,6 @@ export const SCENE_TEMPLATE_LABEL: Record<SceneType, string> = {
   "lower-third": "Lower-third over video",
   "quote-video": "Quote over video",
   "video-only": "Video only",
+  image: "Image",
+  text: "Text",
 };
