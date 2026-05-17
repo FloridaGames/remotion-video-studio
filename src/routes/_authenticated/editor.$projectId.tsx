@@ -15,7 +15,19 @@ import {
   makeScene,
   totalDurationFrames,
   normalizeScenes,
+  ANIMATABLE_DEFAULTS,
+  ANIMATABLE_LABEL,
+  type AnimatableProperty,
+  type EasingKind,
+  type Keyframe,
 } from "@/remotion/types";
+import {
+  buildPresetKeyframes,
+  presetProperties,
+  PRESET_LABEL,
+  type PresetKey,
+  valueAt,
+} from "@/remotion/animation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -39,6 +51,8 @@ import {
   Copy,
   ChevronDown,
   ChevronUp,
+  Diamond,
+  X,
 } from "lucide-react";
 import { StockVideoPicker } from "@/components/StockVideoPicker";
 import { Timeline } from "@/components/Timeline";
@@ -208,6 +222,18 @@ function EditorPage() {
     }
     return arr;
   }, [scenes]);
+
+  // Where does the selected scene start on the global timeline?
+  const selectedSceneStart = useMemo(() => {
+    if (!selected) return 0;
+    if (mode === "multi") return selected.startFrame ?? 0;
+    const idx = scenes.findIndex((s) => s.id === selected.id);
+    return sceneStarts[idx] ?? 0;
+  }, [selected, scenes, sceneStarts, mode]);
+  const localFrame = Math.max(
+    0,
+    Math.min((selected?.durationFrames ?? 1) - 1, frame - selectedSceneStart),
+  );
 
   // Subscribe to player events
   useEffect(() => {
@@ -873,6 +899,8 @@ function EditorPage() {
               scene={selected}
               onChange={(patch) => updateScene(selected.id, patch)}
               onUploadImage={onUploadImage}
+              fps={fps}
+              localFrame={localFrame}
             />
           ) : (
             <p className="text-sm text-muted-foreground">Select a scene to edit it.</p>
@@ -950,10 +978,14 @@ function Inspector({
   scene,
   onChange,
   onUploadImage,
+  fps,
+  localFrame,
 }: {
   scene: Scene;
   onChange: (patch: Partial<Scene>) => void;
   onUploadImage: (f: File) => void;
+  fps: number;
+  localFrame: number;
 }) {
   return (
     <div className="space-y-1">
@@ -1211,6 +1243,15 @@ function Inspector({
           onChange={(v) => onChange({ fadeOutFrames: v })}
         />
       </Section>
+
+      <Section title="Properties (keyframes)" defaultOpen={false}>
+        <PropertiesPanel
+          scene={scene}
+          fps={fps}
+          localFrame={localFrame}
+          onChange={onChange}
+        />
+      </Section>
     </div>
   );
 }
@@ -1388,6 +1429,221 @@ function DurationField({
         value={[valueFrames]}
         onValueChange={([v]) => onChange(clamp(v))}
       />
+    </div>
+  );
+}
+
+const PROPERTY_GROUPS: { label: string; properties: AnimatableProperty[] }[] = [
+  { label: "Transform", properties: ["x", "y", "scale", "rotation", "opacity"] },
+  { label: "Crop (0–1)", properties: ["cropTop", "cropRight", "cropBottom", "cropLeft"] },
+];
+
+const PROPERTY_STEP: Record<AnimatableProperty, number> = {
+  x: 1,
+  y: 1,
+  scale: 0.01,
+  rotation: 1,
+  opacity: 0.01,
+  cropTop: 0.01,
+  cropRight: 0.01,
+  cropBottom: 0.01,
+  cropLeft: 0.01,
+};
+
+function PropertiesPanel({
+  scene,
+  fps,
+  localFrame,
+  onChange,
+}: {
+  scene: Scene;
+  fps: number;
+  localFrame: number;
+  onChange: (patch: Partial<Scene>) => void;
+}) {
+  const kfs = scene.keyframes ?? [];
+
+  const sortedKfs = (prop: AnimatableProperty) =>
+    kfs.filter((k) => k.property === prop).sort((a, b) => a.frame - b.frame);
+
+  function setStatic(prop: AnimatableProperty, value: number) {
+    const transform = { ...(scene.transform ?? {}), [prop]: value };
+    onChange({ transform });
+  }
+
+  function addKeyframeAtPlayhead(prop: AnimatableProperty) {
+    const value = valueAt(scene, prop, localFrame);
+    // Replace any existing keyframe on the same frame, else insert.
+    const without = kfs.filter((k) => !(k.property === prop && k.frame === localFrame));
+    const next: Keyframe[] = [...without, { property: prop, frame: localFrame, value, easing: "linear" }];
+    onChange({ keyframes: next });
+  }
+
+  function updateKeyframe(idx: number, patch: Partial<Keyframe>) {
+    const next = kfs.map((k, i) => (i === idx ? { ...k, ...patch } : k));
+    onChange({ keyframes: next });
+  }
+
+  function removeKeyframe(idx: number) {
+    const next = kfs.filter((_, i) => i !== idx);
+    onChange({ keyframes: next });
+  }
+
+  function clearProperty(prop: AnimatableProperty) {
+    const next = kfs.filter((k) => k.property !== prop);
+    const transform = { ...(scene.transform ?? {}) };
+    delete transform[prop];
+    onChange({ keyframes: next, transform });
+  }
+
+  function applyPreset(preset: PresetKey) {
+    const props = presetProperties(preset);
+    const cleared = kfs.filter((k) => !props.includes(k.property));
+    const added = buildPresetKeyframes(preset, scene.durationFrames, fps);
+    onChange({ keyframes: [...cleared, ...added] });
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="rounded-md bg-muted/40 px-2 py-1.5 text-[11px] text-muted-foreground">
+        Playhead inside this clip:{" "}
+        <span className="font-mono text-foreground">
+          {(localFrame / fps).toFixed(2)}s ({localFrame}f)
+        </span>
+      </div>
+
+      <div>
+        <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          Presets
+        </div>
+        <div className="grid grid-cols-2 gap-1.5">
+          {(Object.keys(PRESET_LABEL) as PresetKey[]).map((p) => (
+            <button
+              key={p}
+              onClick={() => applyPreset(p)}
+              className="rounded-md border border-border px-2 py-1 text-[11px] hover:border-primary hover:bg-muted"
+            >
+              {PRESET_LABEL[p]}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {PROPERTY_GROUPS.map((group) => (
+        <div key={group.label} className="space-y-2">
+          <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            {group.label}
+          </div>
+          {group.properties.map((prop) => {
+            const propKfs = sortedKfs(prop);
+            const base = scene.transform?.[prop] ?? ANIMATABLE_DEFAULTS[prop];
+            const live = valueAt(scene, prop, localFrame);
+            return (
+              <div key={prop} className="rounded-md border border-border p-2">
+                <div className="flex items-center justify-between gap-2">
+                  <Label className="text-[11px]">{ANIMATABLE_LABEL[prop]}</Label>
+                  <div className="flex items-center gap-1">
+                    <span className="font-mono text-[10px] text-muted-foreground">
+                      now {live.toFixed(2)}
+                    </span>
+                    <button
+                      onClick={() => addKeyframeAtPlayhead(prop)}
+                      title="Add keyframe at playhead"
+                      className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                    >
+                      <Diamond className="h-3 w-3" />
+                    </button>
+                    {(propKfs.length > 0 ||
+                      scene.transform?.[prop] !== undefined) && (
+                      <button
+                        onClick={() => clearProperty(prop)}
+                        title="Clear all keyframes for this property"
+                        className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-destructive"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <div className="mt-1 flex items-center gap-2">
+                  <Label className="w-10 text-[10px] text-muted-foreground">base</Label>
+                  <Input
+                    type="number"
+                    step={PROPERTY_STEP[prop]}
+                    value={base}
+                    onChange={(e) => {
+                      const n = parseFloat(e.target.value);
+                      if (!Number.isNaN(n)) setStatic(prop, n);
+                    }}
+                    className="h-6 flex-1 text-right text-[11px]"
+                  />
+                </div>
+                {propKfs.length > 0 && (
+                  <div className="mt-2 space-y-1">
+                    {propKfs.map((k) => {
+                      const realIdx = kfs.indexOf(k);
+                      return (
+                        <div
+                          key={realIdx + "-" + k.frame}
+                          className="flex items-center gap-1 rounded bg-muted/40 p-1 text-[10px]"
+                        >
+                          <Diamond className="h-2.5 w-2.5 text-primary" />
+                          <Input
+                            type="number"
+                            step={1}
+                            value={k.frame}
+                            onChange={(e) => {
+                              const n = parseInt(e.target.value, 10);
+                              if (!Number.isNaN(n))
+                                updateKeyframe(realIdx, {
+                                  frame: Math.max(0, Math.min(scene.durationFrames, n)),
+                                });
+                            }}
+                            className="h-5 w-12 text-right text-[10px]"
+                            title="Frame"
+                          />
+                          <span className="text-muted-foreground">f</span>
+                          <Input
+                            type="number"
+                            step={PROPERTY_STEP[prop]}
+                            value={k.value}
+                            onChange={(e) => {
+                              const n = parseFloat(e.target.value);
+                              if (!Number.isNaN(n)) updateKeyframe(realIdx, { value: n });
+                            }}
+                            className="h-5 flex-1 text-right text-[10px]"
+                            title="Value"
+                          />
+                          <select
+                            value={k.easing ?? "linear"}
+                            onChange={(e) =>
+                              updateKeyframe(realIdx, { easing: e.target.value as EasingKind })
+                            }
+                            className="h-5 rounded border border-border bg-background text-[10px]"
+                            title="Easing out of this keyframe"
+                          >
+                            <option value="linear">lin</option>
+                            <option value="ease-in">in</option>
+                            <option value="ease-out">out</option>
+                            <option value="ease-in-out">in-out</option>
+                          </select>
+                          <button
+                            onClick={() => removeKeyframe(realIdx)}
+                            className="rounded p-0.5 text-muted-foreground hover:text-destructive"
+                            title="Delete keyframe"
+                          >
+                            <Trash2 className="h-2.5 w-2.5" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      ))}
     </div>
   );
 }

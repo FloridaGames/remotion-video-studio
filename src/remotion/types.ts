@@ -21,6 +21,58 @@ export const TRANSITION_LABEL: Record<TransitionKind, string> = {
   flip: "Flip",
 };
 
+/** Properties that can be animated per clip via keyframes (Phase 4). */
+export type AnimatableProperty =
+  | "x"
+  | "y"
+  | "scale"
+  | "rotation"
+  | "opacity"
+  | "cropTop"
+  | "cropRight"
+  | "cropBottom"
+  | "cropLeft";
+
+export type EasingKind = "linear" | "ease-in" | "ease-out" | "ease-in-out";
+
+export type Keyframe = {
+  /** Property being animated. */
+  property: AnimatableProperty;
+  /** Local frame inside the clip (0 = start of clip). */
+  frame: number;
+  /** Target value at this frame. */
+  value: number;
+  /** Easing applied from this keyframe to the next. */
+  easing?: EasingKind;
+};
+
+/** Static (non-animated) base values for animatable properties. */
+export type StaticTransform = Partial<Record<AnimatableProperty, number>>;
+
+export const ANIMATABLE_DEFAULTS: Record<AnimatableProperty, number> = {
+  x: 0,
+  y: 0,
+  scale: 1,
+  rotation: 0,
+  opacity: 1,
+  cropTop: 0,
+  cropRight: 0,
+  cropBottom: 0,
+  cropLeft: 0,
+};
+
+export const ANIMATABLE_LABEL: Record<AnimatableProperty, string> = {
+  x: "Position X",
+  y: "Position Y",
+  scale: "Scale",
+  rotation: "Rotation",
+  opacity: "Opacity",
+  cropTop: "Crop top",
+  cropRight: "Crop right",
+  cropBottom: "Crop bottom",
+  cropLeft: "Crop left",
+};
+
 export type SceneBase = {
   id: string;
   durationFrames: number;
@@ -37,6 +89,10 @@ export type SceneBase = {
   fadeInFrames?: number;
   /** Fade-out length in frames (opacity 1→0 at clip end). Phase-4 keyframes will supersede this. */
   fadeOutFrames?: number;
+  /** Static (non-keyframed) base values for animatable properties. */
+  transform?: StaticTransform;
+  /** Keyframe list for animating properties over the clip's local timeline. */
+  keyframes?: Keyframe[];
 };
 
 export type TitleScene = SceneBase & {
