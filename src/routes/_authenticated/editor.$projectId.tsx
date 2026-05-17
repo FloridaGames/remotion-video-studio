@@ -223,6 +223,18 @@ function EditorPage() {
     return arr;
   }, [scenes]);
 
+  // Where does the selected scene start on the global timeline?
+  const selectedSceneStart = useMemo(() => {
+    if (!selected) return 0;
+    if (mode === "multi") return selected.startFrame ?? 0;
+    const idx = scenes.findIndex((s) => s.id === selected.id);
+    return sceneStarts[idx] ?? 0;
+  }, [selected, scenes, sceneStarts, mode]);
+  const localFrame = Math.max(
+    0,
+    Math.min((selected?.durationFrames ?? 1) - 1, frame - selectedSceneStart),
+  );
+
   // Subscribe to player events
   useEffect(() => {
     const p = playerRef.current;
