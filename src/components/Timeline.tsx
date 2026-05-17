@@ -501,6 +501,12 @@ export function Timeline({
                       pxPerSecond={pxPerSecond}
                       blockWidth={Math.max(20, b.width)}
                     />
+                    <KeyframeMarkers
+                      scene={b.scene}
+                      fps={fps}
+                      pxPerSecond={pxPerSecond}
+                      blockWidth={Math.max(20, b.width)}
+                    />
                     <div
                       data-handle="trim"
                       onMouseDown={(e) => {
@@ -602,6 +608,12 @@ export function Timeline({
                     </div>
                   </div>
                   <FadeOverlays
+                    scene={b.scene}
+                    fps={fps}
+                    pxPerSecond={pxPerSecond}
+                    blockWidth={Math.max(20, b.width)}
+                  />
+                  <KeyframeMarkers
                     scene={b.scene}
                     fps={fps}
                     pxPerSecond={pxPerSecond}
