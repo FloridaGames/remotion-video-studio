@@ -1549,9 +1549,16 @@ function PropertiesPanel({
                     <button
                       onClick={() => addKeyframeAtPlayhead(prop)}
                       title="Add keyframe at playhead"
-                      className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                      className={`rounded p-1 hover:bg-muted ${
+                        propKfs.length > 0
+                          ? "text-primary"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
                     >
-                      <Diamond className="h-3 w-3" />
+                      <Diamond
+                        className="h-3 w-3"
+                        fill={propKfs.length > 0 ? "currentColor" : "none"}
+                      />
                     </button>
                     {(propKfs.length > 0 ||
                       scene.transform?.[prop] !== undefined) && (
@@ -1587,7 +1594,7 @@ function PropertiesPanel({
                           key={realIdx + "-" + k.frame}
                           className="flex items-center gap-1 rounded bg-muted/40 p-1 text-[10px]"
                         >
-                          <Diamond className="h-2.5 w-2.5 text-primary" />
+                          <Diamond className="h-2.5 w-2.5 text-primary" fill="currentColor" />
                           <Input
                             type="number"
                             step={1}

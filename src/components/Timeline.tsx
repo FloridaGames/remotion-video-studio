@@ -89,6 +89,45 @@ function FadeOverlays({
   );
 }
 
+function KeyframeMarkers({
+  scene,
+  fps,
+  pxPerSecond,
+  blockWidth,
+}: {
+  scene: Scene;
+  fps: number;
+  pxPerSecond: number;
+  blockWidth: number;
+}) {
+  const kfs = scene.keyframes ?? [];
+  if (kfs.length === 0) return null;
+  const dur = Math.max(1, scene.durationFrames);
+  // De-duplicate markers at the same frame (multiple properties can share a frame).
+  const frames = Array.from(new Set(kfs.map((k) => Math.max(0, Math.min(dur, k.frame)))));
+  return (
+    <div className="pointer-events-none absolute left-0 right-0 bottom-0 z-[16] h-3">
+      {frames.map((f) => {
+        const left = (f / fps) * pxPerSecond;
+        const clamped = Math.max(0, Math.min(blockWidth - 1, left));
+        const count = kfs.filter((k) => k.frame === f).length;
+        return (
+          <div
+            key={f}
+            className="absolute bottom-0.5"
+            style={{ left: clamped, transform: "translateX(-50%)" }}
+            title={`${count} keyframe${count > 1 ? "s" : ""} @ ${(f / fps).toFixed(2)}s`}
+          >
+            <div
+              className="h-2 w-2 rotate-45 border border-background bg-primary shadow"
+            />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function ZoomControls({
   pxPerSecond,
   fitMode,
@@ -462,6 +501,12 @@ export function Timeline({
                       pxPerSecond={pxPerSecond}
                       blockWidth={Math.max(20, b.width)}
                     />
+                    <KeyframeMarkers
+                      scene={b.scene}
+                      fps={fps}
+                      pxPerSecond={pxPerSecond}
+                      blockWidth={Math.max(20, b.width)}
+                    />
                     <div
                       data-handle="trim"
                       onMouseDown={(e) => {
@@ -563,6 +608,12 @@ export function Timeline({
                     </div>
                   </div>
                   <FadeOverlays
+                    scene={b.scene}
+                    fps={fps}
+                    pxPerSecond={pxPerSecond}
+                    blockWidth={Math.max(20, b.width)}
+                  />
+                  <KeyframeMarkers
                     scene={b.scene}
                     fps={fps}
                     pxPerSecond={pxPerSecond}

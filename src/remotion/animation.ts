@@ -31,7 +31,16 @@ export function valueAt(scene: Scene, prop: AnimatableProperty, localFrame: numb
     .filter((k) => k.property === prop)
     .sort((a, b) => a.frame - b.frame);
   if (kfs.length === 0) return base;
-  if (localFrame <= kfs[0].frame) return kfs[0].value;
+  // Before the first keyframe: tween from the static base value at frame 0
+  // to the first keyframe value. This makes a single keyframe meaningful
+  // (animates from base → keyframe) instead of holding a constant value.
+  if (localFrame <= kfs[0].frame) {
+    if (kfs[0].frame <= 0) return kfs[0].value;
+    const span = kfs[0].frame;
+    const t = Math.max(0, Math.min(1, localFrame / span));
+    const e = easeFn(t, kfs[0].easing ?? "linear");
+    return base + (kfs[0].value - base) * e;
+  }
   const last = kfs[kfs.length - 1];
   if (localFrame >= last.frame) return last.value;
   for (let i = 0; i < kfs.length - 1; i++) {
