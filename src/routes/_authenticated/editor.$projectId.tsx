@@ -899,6 +899,8 @@ function EditorPage() {
               scene={selected}
               onChange={(patch) => updateScene(selected.id, patch)}
               onUploadImage={onUploadImage}
+              fps={fps}
+              localFrame={localFrame}
             />
           ) : (
             <p className="text-sm text-muted-foreground">Select a scene to edit it.</p>
