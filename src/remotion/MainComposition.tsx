@@ -5,6 +5,7 @@ import { slide } from "@remotion/transitions/slide";
 import { wipe } from "@remotion/transitions/wipe";
 import { flip } from "@remotion/transitions/flip";
 import { transitionIntoScene, type ProjectComposition, type Scene, type TransitionKind } from "./types";
+import { computeTransform } from "./animation";
 import { TitleScene } from "./scenes/TitleScene";
 import { TalkingPointScene } from "./scenes/TalkingPointScene";
 import { ImageCaptionScene } from "./scenes/ImageCaptionScene";
@@ -43,7 +44,7 @@ function RenderScene({ scene }: { scene: Scene }) {
   const dur = Math.max(1, scene.durationFrames);
   const fadeIn = Math.max(0, Math.min(scene.fadeInFrames ?? 0, dur));
   const fadeOut = Math.max(0, Math.min(scene.fadeOutFrames ?? 0, dur));
-  let opacity = 1;
+  let fadeOpacity = 1;
   if (fadeIn > 0 || fadeOut > 0) {
     const inEnd = fadeIn;
     const outStart = dur - fadeOut;
@@ -60,13 +61,25 @@ function RenderScene({ scene }: { scene: Scene }) {
     }
     stops.push(dur);
     values.push(fadeOut > 0 ? 0 : 1);
-    opacity = interpolate(frame, stops, values, {
+    fadeOpacity = interpolate(frame, stops, values, {
       extrapolateLeft: "clamp",
       extrapolateRight: "clamp",
     });
   }
+  const tr = computeTransform(scene, frame);
+  const opacity = Math.max(0, Math.min(1, fadeOpacity * tr.opacity));
+  // Clamp crop fractions to [0, 0.99] and ensure left+right < 1, top+bottom < 1.
+  const cT = Math.max(0, Math.min(0.99, tr.cropTop));
+  const cR = Math.max(0, Math.min(0.99, tr.cropRight));
+  const cB = Math.max(0, Math.min(0.99, tr.cropBottom));
+  const cL = Math.max(0, Math.min(0.99, tr.cropLeft));
+  const hasCrop = cT > 0 || cR > 0 || cB > 0 || cL > 0;
+  const clipPath = hasCrop
+    ? `inset(${(cT * 100).toFixed(3)}% ${(cR * 100).toFixed(3)}% ${(cB * 100).toFixed(3)}% ${(cL * 100).toFixed(3)}%)`
+    : undefined;
+  const transform = `translate(${tr.x}px, ${tr.y}px) scale(${tr.scale}) rotate(${tr.rotation}deg)`;
   return (
-    <AbsoluteFill style={{ opacity }}>
+    <AbsoluteFill style={{ opacity, transform, clipPath, transformOrigin: "center center" }}>
       <SceneInner scene={scene} />
     </AbsoluteFill>
   );
