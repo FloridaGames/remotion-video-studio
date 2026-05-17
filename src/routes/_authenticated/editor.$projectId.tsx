@@ -15,7 +15,6 @@ import {
   makeScene,
   totalDurationFrames,
   normalizeScenes,
-  ANIMATABLE_DEFAULTS,
   ANIMATABLE_LABEL,
   type AnimatableProperty,
   type EasingKind,
@@ -52,9 +51,7 @@ import {
   ChevronDown,
   ChevronUp,
   Diamond,
-  X,
   Clock,
-  Image as ImageIcon,
 } from "lucide-react";
 import { StockVideoPicker } from "@/components/StockVideoPicker";
 import { Timeline } from "@/components/Timeline";
