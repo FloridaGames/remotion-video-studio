@@ -904,6 +904,7 @@ function EditorPage() {
               onUploadImage={onUploadImage}
               fps={fps}
               localFrame={localFrame}
+              onSeekLocal={(lf) => seekToFrame(selectedSceneStart + lf)}
             />
           ) : (
             <p className="text-sm text-muted-foreground">Select a scene to edit it.</p>
@@ -983,12 +984,14 @@ function Inspector({
   onUploadImage,
   fps,
   localFrame,
+  onSeekLocal,
 }: {
   scene: Scene;
   onChange: (patch: Partial<Scene>) => void;
   onUploadImage: (f: File) => void;
   fps: number;
   localFrame: number;
+  onSeekLocal: (localFrame: number) => void;
 }) {
   return (
     <div className="space-y-1">
@@ -1441,6 +1444,7 @@ function Inspector({
           fps={fps}
           localFrame={localFrame}
           onChange={onChange}
+          onSeekLocal={onSeekLocal}
         />
       </Section>
     </div>
