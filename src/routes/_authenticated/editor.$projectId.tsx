@@ -1180,6 +1180,194 @@ function Inspector({
             </Field>
           </>
         )}
+        {scene.type === "image" && (
+          <>
+            <Field label="Image (PNG keeps transparency)">
+              <label className="flex cursor-pointer items-center justify-center rounded-md border border-dashed border-border p-4 text-sm text-muted-foreground hover:border-primary">
+                {scene.imageUrl ? "Replace image" : "Upload PNG / JPG"}
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                  className="hidden"
+                  onChange={(e) => e.target.files?.[0] && onUploadImage(e.target.files[0])}
+                />
+              </label>
+            </Field>
+            <Field label="Fit">
+              <div className="flex gap-2">
+                {(["contain", "cover"] as const).map((f) => (
+                  <button
+                    key={f}
+                    type="button"
+                    onClick={() => onChange({ fit: f })}
+                    className={`flex-1 rounded-md border px-3 py-1.5 text-sm capitalize ${
+                      (scene.fit ?? "contain") === f
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border hover:border-primary"
+                    }`}
+                  >
+                    {f}
+                  </button>
+                ))}
+              </div>
+            </Field>
+            <Field label={`Box size (${Math.round((scene.size ?? 0.5) * 100)}% of canvas)`}>
+              <Slider
+                min={10}
+                max={100}
+                step={5}
+                value={[Math.round((scene.size ?? 0.5) * 100)]}
+                onValueChange={([v]) => onChange({ size: v / 100 })}
+              />
+            </Field>
+            <p className="text-[10px] text-muted-foreground">
+              Tip: use Properties → keyframes (X, Y, Scale, Rotation, Opacity) to position and animate this image inside the frame.
+            </p>
+          </>
+        )}
+        {scene.type === "text" && (
+          <>
+            <Field label="Text">
+              <Textarea
+                rows={3}
+                value={scene.text}
+                onChange={(e) => onChange({ text: e.target.value })}
+              />
+            </Field>
+            <div className="grid grid-cols-2 gap-2">
+              <Field label="Font size">
+                <Input
+                  type="number"
+                  min={8}
+                  max={400}
+                  step={2}
+                  value={scene.fontSize}
+                  onChange={(e) => onChange({ fontSize: Math.max(8, Number(e.target.value) || 0) })}
+                />
+              </Field>
+              <Field label="Weight">
+                <select
+                  value={scene.fontWeight}
+                  onChange={(e) => onChange({ fontWeight: Number(e.target.value) })}
+                  className="h-9 w-full rounded-md border border-input bg-transparent px-2 text-sm"
+                >
+                  {[300, 400, 500, 600, 700, 800, 900].map((w) => (
+                    <option key={w} value={w}>
+                      {w}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            </div>
+            <Field label="Font family">
+              <select
+                value={scene.fontFamily ?? "Arial"}
+                onChange={(e) => onChange({ fontFamily: e.target.value })}
+                className="h-9 w-full rounded-md border border-input bg-transparent px-2 text-sm"
+              >
+                {[
+                  "Arial",
+                  "Helvetica",
+                  "Georgia",
+                  "Times New Roman",
+                  "Courier New",
+                  "Verdana",
+                  "Trebuchet MS",
+                  "Impact",
+                ].map((f) => (
+                  <option key={f} value={f}>
+                    {f}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <div className="grid grid-cols-2 gap-2">
+              <Field label="Color">
+                <input
+                  type="color"
+                  value={scene.color}
+                  onChange={(e) => onChange({ color: e.target.value })}
+                  className="h-9 w-full cursor-pointer rounded-md border border-input bg-transparent"
+                />
+              </Field>
+              <Field label="Line height">
+                <Input
+                  type="number"
+                  step={0.05}
+                  min={0.8}
+                  max={3}
+                  value={scene.lineHeight}
+                  onChange={(e) => onChange({ lineHeight: Number(e.target.value) || 1 })}
+                />
+              </Field>
+            </div>
+            <Field label="Align">
+              <div className="flex gap-2">
+                {(["left", "center", "right"] as const).map((a) => (
+                  <button
+                    key={a}
+                    type="button"
+                    onClick={() => onChange({ align: a })}
+                    className={`flex-1 rounded-md border px-3 py-1.5 text-sm capitalize ${
+                      scene.align === a
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border hover:border-primary"
+                    }`}
+                  >
+                    {a}
+                  </button>
+                ))}
+              </div>
+            </Field>
+            <Field label="Background box">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={!!scene.bgColor}
+                  onChange={(e) =>
+                    onChange({ bgColor: e.target.checked ? "#003366" : undefined })
+                  }
+                />
+                <input
+                  type="color"
+                  value={scene.bgColor ?? "#003366"}
+                  disabled={!scene.bgColor}
+                  onChange={(e) => onChange({ bgColor: e.target.value })}
+                  className="h-8 w-14 cursor-pointer rounded-md border border-input bg-transparent disabled:opacity-40"
+                />
+                <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                  <span>pad</span>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={200}
+                    value={scene.bgPaddingX}
+                    onChange={(e) =>
+                      onChange({ bgPaddingX: Math.max(0, Number(e.target.value) || 0) })
+                    }
+                    className="h-7 w-14 text-right text-xs"
+                    title="Horizontal padding"
+                  />
+                  <span>×</span>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={200}
+                    value={scene.bgPaddingY}
+                    onChange={(e) =>
+                      onChange({ bgPaddingY: Math.max(0, Number(e.target.value) || 0) })
+                    }
+                    className="h-7 w-14 text-right text-xs"
+                    title="Vertical padding"
+                  />
+                </div>
+              </div>
+            </Field>
+            <p className="text-[10px] text-muted-foreground">
+              Tip: use Properties → keyframes (X, Y, Scale, Rotation, Opacity) to position and animate this text inside the frame.
+            </p>
+          </>
+        )}
       </Section>
 
       <Section title="Style">
