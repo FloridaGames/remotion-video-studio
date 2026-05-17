@@ -978,10 +978,14 @@ function Inspector({
   scene,
   onChange,
   onUploadImage,
+  fps,
+  localFrame,
 }: {
   scene: Scene;
   onChange: (patch: Partial<Scene>) => void;
   onUploadImage: (f: File) => void;
+  fps: number;
+  localFrame: number;
 }) {
   return (
     <div className="space-y-1">
@@ -1237,6 +1241,15 @@ function Inspector({
           maxFrames={Math.min(scene.durationFrames, 180)}
           stepFrames={3}
           onChange={(v) => onChange({ fadeOutFrames: v })}
+        />
+      </Section>
+
+      <Section title="Properties (keyframes)" defaultOpen={false}>
+        <PropertiesPanel
+          scene={scene}
+          fps={fps}
+          localFrame={localFrame}
+          onChange={onChange}
         />
       </Section>
     </div>
