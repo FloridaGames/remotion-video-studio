@@ -53,6 +53,8 @@ import {
   ChevronUp,
   Diamond,
   X,
+  Clock,
+  Image as ImageIcon,
 } from "lucide-react";
 import { StockVideoPicker } from "@/components/StockVideoPicker";
 import { Timeline } from "@/components/Timeline";
@@ -490,11 +492,12 @@ function EditorPage() {
   }, [togglePlay, stepFrames, undo, redo, selectedId, duplicateScene, removeScene, move, fps]);
 
   async function onUploadImage(file: File) {
-    if (!user || !selected || selected.type !== "image-caption") return;
+    if (!user || !selected) return;
+    if (selected.type !== "image-caption" && selected.type !== "image") return;
     try {
       const path = await uploadToBucket("video-images", user.id, file);
       const { data } = await supabase.storage.from("video-images").createSignedUrl(path, 60 * 60);
-      updateScene(selected.id, { imageUrl: data?.signedUrl ?? "" });
+      updateScene(selected.id, { imageUrl: data?.signedUrl ?? "" } as Partial<Scene>);
       toast.success("Image uploaded");
     } catch (e) {
       toast.error((e as Error).message);
